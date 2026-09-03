@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f4f6;
+  --foreground: #0f172a;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+}
+
+/* Safari paints native bezels on date/select/number. Tailwind cannot
+   reliably turn those off. Scope is the project plan only. */
+#project-plan table input,
+#project-plan table select,
+#project-plan .add-task-form input,
+#project-plan .add-task-form select {
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  box-shadow: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
+  min-height: 1.6rem;
+  border-radius: 4px;
+}
+
+#project-plan table input:hover,
+#project-plan table select:hover {
+  border-color: #cbd5e1;
+}
+
+#project-plan table input:focus,
+#project-plan table select:focus,
+#project-plan .add-task-form input:focus,
+#project-plan .add-task-form select:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: #0284c7;
+}
+
+#project-plan .add-task-form input,
+#project-plan .add-task-form select {
+  background-color: #fff;
+  border-color: #cbd5e1;
+}
+
+#project-plan input[type="date"]::-webkit-datetime-edit,
+#project-plan input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+#project-plan input[type="date"]::-webkit-datetime-edit-text,
+#project-plan input[type="date"]::-webkit-datetime-edit-month-field,
+#project-plan input[type="date"]::-webkit-datetime-edit-day-field,
+#project-plan input[type="date"]::-webkit-datetime-edit-year-field {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+#project-plan input[type="date"]::-webkit-inner-spin-button,
+#project-plan input[type="date"]::-webkit-clear-button {
+  display: none;
+}
+
+#project-plan input[type="number"]::-webkit-inner-spin-button,
+#project-plan input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

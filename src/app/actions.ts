@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { isISODate } from "@/lib/dates";
+import { isRaidSeverity } from "@/lib/raid-severity";
 import {
   findMentionedUserIds,
 } from "@/lib/mentions";
@@ -15,7 +17,11 @@ import {
   insertEmailLog,
   insertRaidComment,
   insertRaidItem,
+  listInboxForUser,
+  markAllInboxRead,
+  markInboxItemRead,
   mentionedUserIdsAlreadyEmailed,
+  syncProjectStatus,
   updateCommentBody,
 } from "@/lib/queries";
 import type { RaidType } from "@/lib/types";
@@ -42,6 +48,7 @@ export async function postComment(formData: FormData) {
     logNewMentions(commentId, body, item.title, []);
     revalidatePath(`/projects/${item.project_id}`);
     revalidatePath(`/projects/${item.project_id}/raid/${item.id}`);
+    revalidatePath("/inbox");
     redirect(`/projects/${item.project_id}/raid/${item.id}`);
   }
 
@@ -50,6 +57,7 @@ export async function postComment(formData: FormData) {
   const commentId = insertComment(entityId, current.id, body);
   logNewMentions(commentId, body, task.name, []);
   revalidatePath(`/projects/${task.project_id}/tasks/${entityId}`);
+  revalidatePath("/inbox");
   redirect(`/projects/${task.project_id}/tasks/${entityId}`);
 }
 
@@ -74,6 +82,7 @@ export async function saveComment(formData: FormData) {
     label,
     mentionedUserIdsAlreadyEmailed(commentId)
   );
+  revalidatePath("/inbox");
   if (comment.task_id != null) {
     const task = getTask(comment.task_id);
     if (!task) return;
@@ -95,11 +104,49 @@ export async function createRaidItem(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const assignedId = Number(formData.get("assignedId"));
-  if (!projectId || !title || !description || !assignedId) return;
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const severity = String(formData.get("severity") ?? "").trim();
+  if (!projectId || !title || !description || !assignedId || !dueDate || !severity) return;
   if (type !== "risk" && type !== "issue") return;
   if (!getUser(assignedId)) return;
-  insertRaidItem({ projectId, type, title, description, assignedId });
+  if (!isISODate(dueDate) || !isRaidSeverity(severity)) return;
+  insertRaidItem({
+    projectId,
+    type,
+    title,
+    description,
+    assignedId,
+    dueDate,
+    severity,
+  });
+  syncProjectStatus(projectId);
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/");
   redirect(`/projects/${projectId}`);
+}
+
+export async function markAllInboxReadAction() {
+  const current = await getCurrentUser();
+  markAllInboxRead(current.id);
+  revalidatePath("/inbox");
+  revalidatePath("/");
+  redirect("/inbox");
+}
+
+export async function openInboxItem(formData: FormData) {
+  const current = await getCurrentUser();
+  const id = Number(formData.get("id"));
+  if (!id) redirect("/inbox");
+  const item = listInboxForUser(current.id).find((row) => row.id === id);
+  if (!item) redirect("/inbox");
+  markInboxItemRead(id, current.id);
+  revalidatePath("/inbox");
+  revalidatePath("/");
+  if (item.task_id != null) {
+    redirect(`/projects/${item.project_id}/tasks/${item.task_id}`);
+  }
+  if (item.raid_item_id != null) {
+    redirect(`/projects/${item.project_id}/raid/${item.raid_item_id}`);
+  }
+  redirect(`/projects/${item.project_id}`);
 }

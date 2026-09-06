@@ -47,7 +47,7 @@ export function CommentThread({
         />
         <div className="mt-2 flex items-center justify-between">
           <p className="text-xs text-slate-500">
-            Tag people with {staffHint(users)}. They get a fake email in the log below.
+            Tag people with {staffHint(users)}. They get an Inbox notification (and a fake email in the log below).
           </p>
           <button
             type="submit"

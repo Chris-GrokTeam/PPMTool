@@ -14,7 +14,7 @@ Workfront-inspired learning project. Product decisions live in `docs/requirement
 
 - Stack: Next.js App Router, TypeScript, Tailwind, SQLite via `node:sqlite` (`src/lib/db.ts`).
 - Fake staff switcher (cookie `ppm_user`). No real auth.
-- `@mentions` write to `email_log`, not a real inbox.
+- @mentions write to `email_log` and the in-app Inbox (header); no real email.
 - Dates display as `Aug 19, 2026`.
 - Comment authors may edit their own comments only.
 - Keep the UI light (no dark theme). Enterprise PM tool, not a marketing site.

@@ -1,12 +1,15 @@
 import "server-only";
 import { getDb } from "./db";
+import { computeProjectStatus } from "./project-status";
 import { applyParentRollup, rollupFromChildren } from "./rollup";
 import type {
   Comment,
   EmailLog,
+  InboxItem,
   Project,
   ProjectStatus,
   RaidItem,
+  RaidSeverity,
   RaidStatus,
   RaidType,
   Task,
@@ -20,6 +23,41 @@ function asPlain<T>(value: unknown): T {
 
 function asPlainList<T>(value: unknown): T[] {
   return JSON.parse(JSON.stringify(value)) as T[];
+}
+
+export function syncProjectStatus(projectId: number): ProjectStatus | undefined {
+  const row = getDb()
+    .prepare("SELECT id, end_date, status FROM projects WHERE id = ?")
+    .get(projectId) as { id: number; end_date: string; status: ProjectStatus } | undefined;
+  if (!row) return undefined;
+
+  const percentComplete = projectPercentComplete(projectId);
+  const openRaid = asPlainList<Pick<RaidItem, "type" | "status" | "severity">>(
+    getDb()
+      .prepare(
+        `SELECT type, status, severity FROM raid_items
+         WHERE project_id = ? AND status != 'closed'`
+      )
+      .all(projectId)
+  );
+  const next = computeProjectStatus({
+    endDate: row.end_date,
+    percentComplete,
+    openRaid,
+  });
+  if (next !== row.status) {
+    getDb()
+      .prepare("UPDATE projects SET status = ? WHERE id = ?")
+      .run(next, projectId);
+  }
+  return next;
+}
+
+export function syncAllProjectStatuses() {
+  const rows = getDb().prepare("SELECT id FROM projects").all() as { id: number }[];
+  for (const row of asPlainList<{ id: number }>(rows)) {
+    syncProjectStatus(row.id);
+  }
 }
 
 export function listUsers(): User[] {
@@ -36,6 +74,7 @@ export function getUser(id: number): User | undefined {
 }
 
 export function listProjects(): Project[] {
+  syncAllProjectStatuses();
   return asPlainList<Project>(
     getDb()
     .prepare(
@@ -53,6 +92,7 @@ export function listProjects(): Project[] {
 }
 
 export function getProject(id: number): Project | undefined {
+  syncProjectStatus(id);
   const row = getDb()
     .prepare(
       `SELECT
@@ -169,7 +209,7 @@ export function listEmailLogForTask(taskId: number): EmailLog[] {
   return asPlainList<EmailLog>(
     getDb()
     .prepare(
-      `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at
+      `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at, e.read_at
        FROM email_log e
        JOIN users u ON u.id = e.to_user_id
        JOIN comments c ON c.id = e.comment_id
@@ -185,12 +225,15 @@ export function listRaidForProject(projectId: number): RaidItem[] {
     getDb()
       .prepare(
         `SELECT r.id, r.project_id, p.name AS project_name, r.type, r.title,
-                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status
+                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status,
+                r.due_date, r.severity
          FROM raid_items r
          JOIN projects p ON p.id = r.project_id
          JOIN users u ON u.id = r.assigned_id
          WHERE r.project_id = ?
          ORDER BY CASE r.status WHEN 'closed' THEN 1 ELSE 0 END,
+                  CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                  r.due_date,
                   CASE r.type WHEN 'risk' THEN 0 ELSE 1 END,
                   r.id`
       )
@@ -216,12 +259,17 @@ export function listOpenRaid(filters: {
     getDb()
     .prepare(
       `SELECT r.id, r.project_id, p.name AS project_name, r.type, r.title,
-              r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status
+                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status,
+                r.due_date, r.severity
        FROM raid_items r
        JOIN projects p ON p.id = r.project_id
        JOIN users u ON u.id = r.assigned_id
        WHERE ${clauses.join(" AND ")}
-       ORDER BY p.name, CASE r.type WHEN 'risk' THEN 0 ELSE 1 END, r.id`
+       ORDER BY CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+              r.due_date,
+              p.name,
+              CASE r.type WHEN 'risk' THEN 0 ELSE 1 END,
+              r.id`
     )
     .all(...params)
   );
@@ -355,7 +403,7 @@ export function listEmailLogForRaid(raidItemId: number): EmailLog[] {
   return asPlainList<EmailLog>(
     getDb()
       .prepare(
-        `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at
+        `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at, e.read_at
          FROM email_log e
          JOIN users u ON u.id = e.to_user_id
          JOIN comments c ON c.id = e.comment_id
@@ -370,7 +418,8 @@ export function getRaidItem(id: number): RaidItem | undefined {
   const row = getDb()
     .prepare(
       `SELECT r.id, r.project_id, p.name AS project_name, r.type, r.title,
-              r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status
+                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status,
+                r.due_date, r.severity
        FROM raid_items r
        JOIN projects p ON p.id = r.project_id
        JOIN users u ON u.id = r.assigned_id
@@ -386,12 +435,22 @@ export function insertRaidItem(input: {
   title: string;
   description: string;
   assignedId: number;
+  dueDate: string;
+  severity: RaidSeverity;
 }): number {
   const result = getDb()
     .prepare(
-      "INSERT INTO raid_items (project_id, type, title, description, assigned_id, status) VALUES (?, ?, ?, ?, ?, 'open')"
+      "INSERT INTO raid_items (project_id, type, title, description, assigned_id, status, due_date, severity) VALUES (?, ?, ?, ?, ?, 'open', ?, ?)"
     )
-    .run(input.projectId, input.type, input.title, input.description, input.assignedId);
+    .run(
+      input.projectId,
+      input.type,
+      input.title,
+      input.description,
+      input.assignedId,
+      input.dueDate,
+      input.severity
+    );
   return Number(result.lastInsertRowid);
 }
 
@@ -400,10 +459,14 @@ export function updateRaidItem(input: {
   title: string;
   description: string;
   status: RaidStatus;
+  dueDate: string;
+  severity: RaidSeverity;
 }) {
   getDb()
-    .prepare("UPDATE raid_items SET title = ?, description = ?, status = ? WHERE id = ?")
-    .run(input.title, input.description, input.status, input.id);
+    .prepare(
+      "UPDATE raid_items SET title = ?, description = ?, status = ?, due_date = ?, severity = ? WHERE id = ?"
+    )
+    .run(input.title, input.description, input.status, input.dueDate, input.severity, input.id);
 }
 
 export function insertComment(taskId: number, authorId: number, body: string): number {
@@ -447,4 +510,63 @@ export function mentionedUserIdsAlreadyEmailed(commentId: number): number[] {
     .prepare("SELECT to_user_id FROM email_log WHERE comment_id = ?")
     .all(commentId) as { to_user_id: number }[];
   return asPlainList<{ to_user_id: number }>(rows).map((row) => row.to_user_id);
+}
+
+export function projectPercentComplete(projectId: number): number {
+  const tasks = listTasks(projectId);
+  const roots = tasks.filter((task) => task.parent_id == null);
+  const rolled = rollupFromChildren(roots);
+  return rolled?.percent_complete ?? 0;
+}
+
+export function listInboxForUser(userId: number): InboxItem[] {
+  return asPlainList<InboxItem>(
+    getDb()
+      .prepare(
+        `SELECT
+           e.id, e.comment_id, e.subject, e.created_at, e.read_at,
+           c.body, c.author_id, a.name AS author_name, a.role AS author_role,
+           c.task_id, c.raid_item_id,
+           COALESCE(t.project_id, r.project_id) AS project_id,
+           COALESCE(p_task.name, p_raid.name) AS project_name,
+           COALESCE(t.name, r.title) AS target_label
+         FROM email_log e
+         JOIN comments c ON c.id = e.comment_id
+         JOIN users a ON a.id = c.author_id
+         LEFT JOIN tasks t ON t.id = c.task_id
+         LEFT JOIN projects p_task ON p_task.id = t.project_id
+         LEFT JOIN raid_items r ON r.id = c.raid_item_id
+         LEFT JOIN projects p_raid ON p_raid.id = r.project_id
+         WHERE e.to_user_id = ?
+         ORDER BY e.created_at DESC, e.id DESC`
+      )
+      .all(userId)
+  );
+}
+
+export function countUnreadInbox(userId: number): number {
+  const row = getDb()
+    .prepare(
+      "SELECT COUNT(*) AS n FROM email_log WHERE to_user_id = ? AND read_at IS NULL"
+    )
+    .get(userId) as { n: number } | undefined;
+  return Number(row?.n ?? 0);
+}
+
+export function markInboxItemRead(id: number, userId: number) {
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(
+      "UPDATE email_log SET read_at = ? WHERE id = ? AND to_user_id = ? AND read_at IS NULL"
+    )
+    .run(now, id, userId);
+}
+
+export function markAllInboxRead(userId: number) {
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(
+      "UPDATE email_log SET read_at = ? WHERE to_user_id = ? AND read_at IS NULL"
+    )
+    .run(now, userId);
 }

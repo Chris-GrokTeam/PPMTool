@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { CommentThread } from "@/components/CommentThread";
+import { RaidSeverityPill } from "@/components/StatusPill";
 import { getCurrentUser } from "@/lib/auth";
+import { formatDate } from "@/lib/dates";
 import { personLabel } from "@/lib/people";
 import { raidStatusLabel } from "@/lib/raid-status";
 import {
@@ -43,13 +45,18 @@ export default async function RaidItemPage({
         >
           ← {project.name}
         </Link>
-        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-          {item.type} · {raidStatusLabel[item.status]}
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+          <span>
+            {item.type} · {raidStatusLabel[item.status]}
+          </span>
+          <RaidSeverityPill severity={item.severity} />
         </p>
         <h1 className="mt-1 text-xl font-semibold text-slate-900">{item.title}</h1>
         <p className="mt-2 text-sm text-slate-700">{item.description}</p>
         <p className="mt-2 mb-6 text-sm text-slate-600">
           Assigned: {personLabel(item.assigned_name, item.assigned_role)}
+          <span className="mx-2 text-slate-300">·</span>
+          Due: {formatDate(item.due_date)}
         </p>
         <CommentThread
           parentKind="raid"

@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { personLabel } from "@/lib/people";
+import {
+  RAID_SEVERITIES,
+  raidSeverityLabel,
+  type RaidSeverity,
+} from "@/lib/raid-severity";
 import { RAID_STATUSES, raidStatusLabel, type RaidStatus } from "@/lib/raid-status";
 import type { RaidItem } from "@/lib/types";
 
@@ -18,25 +23,33 @@ export function RaidRow({
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.description);
   const [status, setStatus] = useState<RaidStatus>(item.status);
+  const [dueDate, setDueDate] = useState(item.due_date);
+  const [severity, setSeverity] = useState<RaidSeverity>(item.severity);
 
   useEffect(() => {
     setTitle(item.title);
     setDescription(item.description);
     setStatus(item.status);
-  }, [item.title, item.description, item.status]);
+    setDueDate(item.due_date);
+    setSeverity(item.severity);
+  }, [item.title, item.description, item.status, item.due_date, item.severity]);
 
   async function persist(next: {
     title?: string;
     description?: string;
     status?: RaidStatus;
+    dueDate?: string;
+    severity?: RaidSeverity;
   }) {
     const payload = {
       id: item.id,
       title: (next.title ?? title).trim(),
       description: (next.description ?? description).trim(),
       status: next.status ?? status,
+      dueDate: next.dueDate ?? dueDate,
+      severity: next.severity ?? severity,
     };
-    if (!payload.title || !payload.description) return;
+    if (!payload.title || !payload.description || !payload.dueDate) return;
     const response = await fetch("/api/raid", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -87,6 +100,47 @@ export function RaidRow({
       </td>
       <td className={`px-3 py-2 text-xs leading-snug ${closed ? "text-slate-400" : "text-slate-700"}`}>
         {personLabel(item.assigned_name, item.assigned_role)}
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(event) => {
+            const next = event.target.value;
+            setDueDate(next);
+            if (next) void persist({ dueDate: next });
+          }}
+          className={`rounded border border-slate-200 bg-white px-2 py-1 text-xs outline-hidden focus:border-sky-600 ${
+            closed ? "border-slate-200 bg-slate-100 text-slate-500" : "text-slate-800"
+          }`}
+          aria-label="Due"
+        />
+      </td>
+      <td className="px-3 py-2">
+        <select
+          value={severity}
+          onChange={(event) => {
+            const next = event.target.value as RaidSeverity;
+            setSeverity(next);
+            void persist({ severity: next });
+          }}
+          className={`rounded border border-slate-200 bg-white px-2 py-1 text-xs outline-hidden focus:border-sky-600 ${
+            closed
+              ? "border-slate-200 bg-slate-100 text-slate-500"
+              : severity === "critical"
+                ? "border-red-300 bg-red-50 text-red-900"
+                : severity === "high"
+                  ? "border-amber-300 bg-amber-50 text-amber-950"
+                  : "text-slate-800"
+          }`}
+          aria-label="Severity"
+        >
+          {RAID_SEVERITIES.map((value) => (
+            <option key={value} value={value}>
+              {raidSeverityLabel[value]}
+            </option>
+          ))}
+        </select>
       </td>
       <td className="px-3 py-2">
         <select

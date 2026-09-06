@@ -17,6 +17,7 @@ import {
   listTasks,
   nextSortOrder,
   rollupParentFromChildren,
+  syncProjectStatus,
   updateTaskFields,
 } from "./queries";
 import type { TaskStatus } from "./types";
@@ -101,6 +102,7 @@ export function saveTask(input: SaveTaskInput): { ok: true } | { ok: false; erro
   } else if (task.parent_id != null) {
     rollupParentFromChildren(task.parent_id);
   }
+  syncProjectStatus(task.project_id);
   revalidateTask(task.project_id, task.id);
   if (task.parent_id != null) revalidateTask(task.project_id, task.parent_id);
   return { ok: true };
@@ -150,6 +152,7 @@ export function createTask(input: {
   });
   normalizeOutline(input.projectId);
   if (input.parentId != null) rollupParentFromChildren(input.parentId);
+  syncProjectStatus(input.projectId);
   revalidateTask(input.projectId, id);
   if (input.parentId != null) revalidateTask(input.projectId, input.parentId);
   return { ok: true, id };
@@ -212,6 +215,7 @@ export function indentTask(taskId: number): { ok: true } | { ok: false; error: s
     rollupParentFromChildren(after.parent_id);
     revalidateTask(task.project_id, after.parent_id);
   }
+  syncProjectStatus(task.project_id);
   revalidateTask(task.project_id, task.id);
   return { ok: true };
 }
@@ -227,6 +231,7 @@ export function outdentTask(taskId: number): { ok: true } | { ok: false; error: 
     rollupParentFromChildren(oldParent);
     revalidateTask(task.project_id, oldParent);
   }
+  syncProjectStatus(task.project_id);
   revalidateTask(task.project_id, task.id);
   return { ok: true };
 }

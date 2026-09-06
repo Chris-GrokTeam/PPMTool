@@ -89,7 +89,7 @@ Keep adding rows here whenever we simplify something.
 | @mention notify | In-app + fake email log | Real email (and later digest / mute / preferences) |
 | Task comments | History + mentions on a task; **author can edit their own**, others cannot | Attachments, delete, audit of edits, rich text, email-to-comment |
 | Assignments | Simple assignee on a task | Multiple assignees, job roles, handoff, out-of-office |
-| Portfolio Gantt | All projects, milestones, on-track status | Dependencies, percent complete, baselines, critical path, drag project bars |
+| Portfolio Gantt | All projects, milestones, on-track status, % complete fill (task rollup) | Dependencies, baselines, critical path, drag project bars |
 | Project status | A status you can set / see on the Gantt | Status driven by task progress, conditions, or schedule variance |
 | Risks & issues | Open counts on portfolio + project header; click through exists; **screen spec deferred** | We design the RAID section as a next step, then later: owners, due dates, severity, workflow |
 | Reports | Open RAID list on Home (no separate Reports page) | Filters, saved reports, scheduled send, export, dashboards |
@@ -161,7 +161,7 @@ This is what you see when you open the app. One timeline, every project.
 
 **v1 cut:** no drag-to-reschedule, no dependency arrows, no zoom. No owner column or RAID log on this screen (counts only). Left columns do not freeze while the Gantt pans (later). Project plan Gantt stays months-only until we share the fiscal header.
 
-**Make it real later:** dependencies, baselines, drag dates, percent complete, critical path; freeze names while the timeline scrolls.
+**Make it real later:** dependencies, baselines, drag dates, critical path; freeze names while the timeline scrolls.
 
 ```
 [ PPM ]   Home | Reports                    You are: Alex (PM) ▾
@@ -226,7 +226,7 @@ You get here by clicking a task on the project page. This is the Workfront **Upd
 - **Comment history** on this task only (person, date, text; `@names` highlighted)
 - Dates on comments: **Aug 19, 2026**
 - **Author can edit their own comments.** Other people cannot. Edited comments can show a small “edited” mark.
-- Tagging someone writes a row to the **fake email log** (and an in-app notification) — not a real inbox
+- Tagging someone writes a row to the **fake email log** and the header **Inbox** (unread badge, click-through to the thread) — not a real mailbox
 
 **v1 cut:** no attachments, no delete, no email-in. Newest comments at the top (Workfront-like). No editing other people’s comments.
 
@@ -283,3 +283,4 @@ Opened from the project header counts. Chris is not writing requirements for thi
 | 2026-08-20 | Home: resizable name pane, wrap toggle, fiscal year/quarter axis (Q1 = 1 Apr, label FY2026-27), Today on the FY row, name/bar hover, risk/issue counts link to RAID. |
 | 2026-08-20 | Home data columns are independent (Project, Status, Risks, Issues) with per-column resize like the plan. Wrap only applies to the project name. Fiscal Gantt header unchanged. |
 | 2026-08-21 | Open risks and issues list moved onto Home under the portfolio Gantt. Reports nav/page removed; `/reports` redirects to Home. |
+| 2026-09-05 | Header Inbox from email_log (unread badge, mark read, click-through to task/RAID). Portfolio Gantt bars show % complete rolled up from tasks. Fixed Open PPM Tool.command Node discovery + version checks. SCHEMA_VERSION 7 (read_at on email_log). |

@@ -109,7 +109,10 @@ export function GanttTrack({ range, bar }: { range: TimelineRange; bar: GanttBar
   const start = pct(parseISODate(bar.start), range);
   const end = pct(parseISODate(bar.end), range);
   const width = Math.max(end - start, 0.8);
-  const barTitle = `${formatDate(bar.start)} – ${formatDate(bar.end)}`;
+  const barTitle =
+    bar.percentComplete != null
+      ? `${formatDate(bar.start)} – ${formatDate(bar.end)} · ${bar.percentComplete}%`
+      : `${formatDate(bar.start)} – ${formatDate(bar.end)}`;
 
   return (
     <div className="relative h-full min-h-11 border-b border-slate-100 bg-white">

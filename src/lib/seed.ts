@@ -76,9 +76,15 @@ export function seed(database: DatabaseSync) {
       (13, 6, 'risk', 'Seasonal swell on the south coast', 'Heavy-mineral sampling may miss the planned window if swell stays high.', 8, 'open'),
       (14, 6, 'risk', 'Vessel support still unprocured', 'Charter is not approved yet; RFP for vessel and ATV support cannot start.', 5, 'open');
 
-    INSERT INTO comments (task_id, raid_item_id, author_id, body, created_at, updated_at) VALUES
-      (NULL, 1, 4, '@Devon access letters are with the parish offices. If they stall, we will flag this at the next execution huddle.', '2026-08-16T09:20:00', '2026-08-16T09:20:00'),
-      (NULL, 2, 5, '@Legend I cannot post the award notice until @Horace files the technical panel notes. Jamaican public procurement policy needs a complete evaluation file.', '2026-08-18T11:05:00', '2026-08-18T11:05:00'),
-      (NULL, 3, 9, '@Nadine gravity infill on the north coast is the weather risk. Magnetics can keep flying.', '2026-08-19T10:00:00', '2026-08-19T10:00:00');
+    INSERT INTO comments (id, task_id, raid_item_id, author_id, body, created_at, updated_at) VALUES
+      (10, NULL, 1, 4, '@Devon access letters are with the parish offices. If they stall, we will flag this at the next execution huddle.', '2026-08-16T09:20:00', '2026-08-16T09:20:00'),
+      (11, NULL, 2, 5, '@Legend I cannot post the award notice until @Horace files the technical panel notes. Jamaican public procurement policy needs a complete evaluation file.', '2026-08-18T11:05:00', '2026-08-18T11:05:00'),
+      (12, NULL, 3, 9, '@Nadine gravity infill on the north coast is the weather risk. Magnetics can keep flying.', '2026-08-19T10:00:00', '2026-08-19T10:00:00');
+
+    INSERT INTO email_log (comment_id, to_user_id, subject, created_at) VALUES
+      (10, 8, 'You were tagged on Facility access delays', '2026-08-16T09:20:00'),
+      (11, 1, 'You were tagged on Award recommendation still open', '2026-08-18T11:05:00'),
+      (11, 2, 'You were tagged on Award recommendation still open', '2026-08-18T11:05:00'),
+      (12, 4, 'You were tagged on Weather windows for gravity lines', '2026-08-19T10:00:00');
   `);
 }

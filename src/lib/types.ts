@@ -57,6 +57,25 @@ export type EmailLog = {
   to_user_role: string;
   subject: string;
   created_at: string;
+  read_at: string | null;
+};
+
+/** Inbox row: mention notification with deep-link targets. */
+export type InboxItem = {
+  id: number;
+  comment_id: number;
+  subject: string;
+  created_at: string;
+  read_at: string | null;
+  body: string;
+  author_id: number;
+  author_name: string;
+  author_role: string;
+  task_id: number | null;
+  raid_item_id: number | null;
+  project_id: number;
+  project_name: string;
+  target_label: string;
 };
 
 export type RaidItem = {

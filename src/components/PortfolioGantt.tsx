@@ -35,7 +35,7 @@ const MIN_WIDTHS: Record<DataColId, number> = {
 const GANTT_MIN = 380;
 const STORAGE_KEY = "ppm-home-layout-v2";
 
-export type PortfolioRow = Project & { milestones: GanttMilestone[] };
+export type PortfolioRow = Project & { milestones: GanttMilestone[]; percent_complete: number };
 
 function clampWidths(input?: Partial<Record<DataColId, unknown>>): Record<DataColId, number> {
   const next = { ...DEFAULT_WIDTHS };
@@ -192,6 +192,7 @@ export function PortfolioGantt({
                     start: project.start_date,
                     end: project.end_date,
                     className: projectBarClass[project.status],
+                    percentComplete: project.percent_complete,
                     milestones: project.milestones,
                   }}
                 />

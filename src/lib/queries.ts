@@ -4,6 +4,7 @@ import { applyParentRollup, rollupFromChildren } from "./rollup";
 import type {
   Comment,
   EmailLog,
+  InboxItem,
   Project,
   ProjectStatus,
   RaidItem,
@@ -169,7 +170,7 @@ export function listEmailLogForTask(taskId: number): EmailLog[] {
   return asPlainList<EmailLog>(
     getDb()
     .prepare(
-      `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at
+      `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at, e.read_at
        FROM email_log e
        JOIN users u ON u.id = e.to_user_id
        JOIN comments c ON c.id = e.comment_id
@@ -355,7 +356,7 @@ export function listEmailLogForRaid(raidItemId: number): EmailLog[] {
   return asPlainList<EmailLog>(
     getDb()
       .prepare(
-        `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at
+        `SELECT e.id, e.comment_id, e.to_user_id, u.name AS to_user_name, u.role AS to_user_role, e.subject, e.created_at, e.read_at
          FROM email_log e
          JOIN users u ON u.id = e.to_user_id
          JOIN comments c ON c.id = e.comment_id
@@ -447,4 +448,63 @@ export function mentionedUserIdsAlreadyEmailed(commentId: number): number[] {
     .prepare("SELECT to_user_id FROM email_log WHERE comment_id = ?")
     .all(commentId) as { to_user_id: number }[];
   return asPlainList<{ to_user_id: number }>(rows).map((row) => row.to_user_id);
+}
+
+export function projectPercentComplete(projectId: number): number {
+  const tasks = listTasks(projectId);
+  const roots = tasks.filter((task) => task.parent_id == null);
+  const rolled = rollupFromChildren(roots);
+  return rolled?.percent_complete ?? 0;
+}
+
+export function listInboxForUser(userId: number): InboxItem[] {
+  return asPlainList<InboxItem>(
+    getDb()
+      .prepare(
+        `SELECT
+           e.id, e.comment_id, e.subject, e.created_at, e.read_at,
+           c.body, c.author_id, a.name AS author_name, a.role AS author_role,
+           c.task_id, c.raid_item_id,
+           COALESCE(t.project_id, r.project_id) AS project_id,
+           COALESCE(p_task.name, p_raid.name) AS project_name,
+           COALESCE(t.name, r.title) AS target_label
+         FROM email_log e
+         JOIN comments c ON c.id = e.comment_id
+         JOIN users a ON a.id = c.author_id
+         LEFT JOIN tasks t ON t.id = c.task_id
+         LEFT JOIN projects p_task ON p_task.id = t.project_id
+         LEFT JOIN raid_items r ON r.id = c.raid_item_id
+         LEFT JOIN projects p_raid ON p_raid.id = r.project_id
+         WHERE e.to_user_id = ?
+         ORDER BY e.created_at DESC, e.id DESC`
+      )
+      .all(userId)
+  );
+}
+
+export function countUnreadInbox(userId: number): number {
+  const row = getDb()
+    .prepare(
+      "SELECT COUNT(*) AS n FROM email_log WHERE to_user_id = ? AND read_at IS NULL"
+    )
+    .get(userId) as { n: number } | undefined;
+  return Number(row?.n ?? 0);
+}
+
+export function markInboxItemRead(id: number, userId: number) {
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(
+      "UPDATE email_log SET read_at = ? WHERE id = ? AND to_user_id = ? AND read_at IS NULL"
+    )
+    .run(now, id, userId);
+}
+
+export function markAllInboxRead(userId: number) {
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(
+      "UPDATE email_log SET read_at = ? WHERE to_user_id = ? AND read_at IS NULL"
+    )
+    .run(now, userId);
 }

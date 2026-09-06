@@ -1,4 +1,4 @@
-# PPM Tool — Status snapshot (21 Aug 2026)
+# PPM Tool — Status snapshot (5 Sep 2026)
 
 **GitHub:** [github.com/Chris-GrokTeam/PPMTool](https://github.com/Chris-GrokTeam/PPMTool) (public). Personal manager note stays local only (`docs/vacation-note.md`, gitignored).
 
@@ -14,11 +14,11 @@ Workfront-inspired **learning app** on Chris’s Mac. Fictional Jamaican Geologi
 
 ## What we built
 
-- **Home:** all projects on one Gantt with status, open risk/issue counts, milestones, and today line; open risks and issues list underneath (title opens RAID comments).
+- **Home:** all projects on one Gantt with status, open risk/issue counts, milestones, today line, and **% complete** fill on project bars; open risks and issues list underneath (title opens RAID comments).
 - **Project:** RAID register (assigned + four statuses, add, comments) above task table + Gantt; one-level outline; Gantt drag moves non-heading bars only (top-level leaves and milestones); headings locked.
-- **Task:** comment history; author edits own comments; `@mention` → email log on the thread (no notification inbox).
+- **Task:** comment history; author edits own comments; @mention → email log + header **Inbox** (click through to task/RAID thread).
 - **People:** fake staff switcher (`ppm_user` cookie). No login.
-- **Nav:** Home only (Reports removed; `/reports` redirects to Home).
+- **Nav:** Home + Inbox (Reports removed; `/reports` redirects to Home).
 - **Stack + run:** Next.js, TypeScript, Tailwind, SQLite. `npm run dev` → http://localhost:3000. Safari is the target browser. Name wrap is a toggle (default off). Brief: `docs/requirements.md`.
 
 ## What’s left

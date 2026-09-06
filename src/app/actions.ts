@@ -15,6 +15,9 @@ import {
   insertEmailLog,
   insertRaidComment,
   insertRaidItem,
+  listInboxForUser,
+  markAllInboxRead,
+  markInboxItemRead,
   mentionedUserIdsAlreadyEmailed,
   updateCommentBody,
 } from "@/lib/queries";
@@ -42,6 +45,7 @@ export async function postComment(formData: FormData) {
     logNewMentions(commentId, body, item.title, []);
     revalidatePath(`/projects/${item.project_id}`);
     revalidatePath(`/projects/${item.project_id}/raid/${item.id}`);
+    revalidatePath("/inbox");
     redirect(`/projects/${item.project_id}/raid/${item.id}`);
   }
 
@@ -50,6 +54,7 @@ export async function postComment(formData: FormData) {
   const commentId = insertComment(entityId, current.id, body);
   logNewMentions(commentId, body, task.name, []);
   revalidatePath(`/projects/${task.project_id}/tasks/${entityId}`);
+  revalidatePath("/inbox");
   redirect(`/projects/${task.project_id}/tasks/${entityId}`);
 }
 
@@ -74,6 +79,7 @@ export async function saveComment(formData: FormData) {
     label,
     mentionedUserIdsAlreadyEmailed(commentId)
   );
+  revalidatePath("/inbox");
   if (comment.task_id != null) {
     const task = getTask(comment.task_id);
     if (!task) return;
@@ -102,4 +108,30 @@ export async function createRaidItem(formData: FormData) {
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/");
   redirect(`/projects/${projectId}`);
+}
+
+export async function markAllInboxReadAction() {
+  const current = await getCurrentUser();
+  markAllInboxRead(current.id);
+  revalidatePath("/inbox");
+  revalidatePath("/");
+  redirect("/inbox");
+}
+
+export async function openInboxItem(formData: FormData) {
+  const current = await getCurrentUser();
+  const id = Number(formData.get("id"));
+  if (!id) redirect("/inbox");
+  const item = listInboxForUser(current.id).find((row) => row.id === id);
+  if (!item) redirect("/inbox");
+  markInboxItemRead(id, current.id);
+  revalidatePath("/inbox");
+  revalidatePath("/");
+  if (item.task_id != null) {
+    redirect(`/projects/${item.project_id}/tasks/${item.task_id}`);
+  }
+  if (item.raid_item_id != null) {
+    redirect(`/projects/${item.project_id}/raid/${item.raid_item_id}`);
+  }
+  redirect(`/projects/${item.project_id}`);
 }

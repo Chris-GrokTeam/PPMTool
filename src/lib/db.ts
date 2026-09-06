@@ -5,7 +5,7 @@ import path from "node:path";
 import { seed } from "./seed";
 
 const dbPath = path.join(process.cwd(), "data", "ppm.sqlite");
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 let db: DatabaseSync | null = null;
 

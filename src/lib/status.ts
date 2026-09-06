@@ -1,5 +1,8 @@
 import type { ProjectStatus, TaskStatus } from "./types";
 
+export { AT_RISK_END_WINDOW_DAYS } from "./project-status";
+
+/** Project health pills. Values are computed (see project-status.ts); v1 has no manual override. */
 export const projectStatusLabel: Record<ProjectStatus, string> = {
   on_track: "On track",
   at_risk: "At risk",

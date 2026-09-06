@@ -21,6 +21,7 @@ import {
   markAllInboxRead,
   markInboxItemRead,
   mentionedUserIdsAlreadyEmailed,
+  syncProjectStatus,
   updateCommentBody,
 } from "@/lib/queries";
 import type { RaidType } from "@/lib/types";
@@ -118,6 +119,7 @@ export async function createRaidItem(formData: FormData) {
     dueDate,
     severity,
   });
+  syncProjectStatus(projectId);
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/");
   redirect(`/projects/${projectId}`);

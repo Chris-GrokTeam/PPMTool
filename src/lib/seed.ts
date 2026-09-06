@@ -22,13 +22,14 @@ export function seed(database: DatabaseSync) {
       (10, 'Omar', 'Laboratory Geochemist'),
       (11, 'Imani', 'Health, Safety and Environment Lead');
 
+    /* Project status values are hints; syncProjectStatus recomputes from schedule + open RAID. */
     INSERT INTO projects (id, name, owner_id, status, start_date, end_date) VALUES
-      (1, 'Assessment of Critical Minerals in Jamaican Tailing Ponds', 1, 'on_track', '2026-05-01', '2027-03-31'),
+      (1, 'Assessment of Critical Minerals in Jamaican Tailing Ponds', 1, 'off_track', '2026-05-01', '2027-03-31'),
       (2, 'Airborne Geophysical Survey of Jamaica (Magnetics and Gravity)', 1, 'at_risk', '2026-01-06', '2026-12-18'),
       (3, 'Geochemical Analysis of 10,000 Rocks Acquired by the Jamaican Bobsled Team', 1, 'on_track', '2026-03-02', '2026-11-27'),
-      (4, 'Geothermal Potential Mapping of Jamaica', 1, 'at_risk', '2026-04-01', '2027-06-30'),
+      (4, 'Geothermal Potential Mapping of Jamaica', 1, 'on_track', '2026-04-01', '2027-06-30'),
       (5, 'Assessment of Till and Alluvium Samples Across Jamaica', 1, 'off_track', '2026-02-02', '2027-01-29'),
-      (6, 'Beach Fieldwork for Critical Mineral Potential in Jamaica', 1, 'on_track', '2026-09-01', '2027-08-31');
+      (6, 'Beach Fieldwork for Critical Mineral Potential in Jamaica', 1, 'at_risk', '2026-09-01', '2027-08-31');
   `);
   seedTasks(database);
   database.exec(`
@@ -67,7 +68,7 @@ export function seed(database: DatabaseSync) {
       (4, 2, 'risk', 'Aircraft maintenance slot', 'Contractor flagged a possible unscheduled maintenance day in September.', 4, 'closed', '2026-09-05', 'medium'),
       (5, 2, 'issue', 'Kingston block community notices aging', 'Notices need a refresh if acquisition slips past the posted dates.', 11, 'in_progress', '2026-09-20', 'medium'),
       (6, 3, 'risk', 'Catalogue mismatches in bobsled boxes', 'A small set of 1988 labels do not match the modern sample IDs.', 8, 'closed', '2026-06-01', 'low'),
-      (7, 3, 'issue', 'Assay batch waiting on QA/QC', 'First pulp batch cannot be released to GIS until blanks and duplicates clear.', 10, 'open', '2026-09-18', 'high'),
+      (7, 3, 'issue', 'Assay batch waiting on QA/QC', 'First pulp batch cannot be released to GIS until blanks and duplicates clear.', 10, 'open', '2026-09-18', 'medium'),
       (8, 4, 'risk', 'Incomplete historic heat-flow points', 'Several legacy wells have temperature data but no reliable coordinates.', 6, 'open', '2026-11-30', 'medium'),
       (9, 4, 'issue', 'Clarendon warm seeps unclassified', 'Field team wants a chief geologist review before ranking those features.', 2, 'open', '2026-09-25', 'medium'),
       (10, 5, 'risk', 'Lab throughput for heavy-mineral concentrates', 'Concentrate work is slower than the charter assumed.', 10, 'open', '2026-10-01', 'high'),

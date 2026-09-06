@@ -89,8 +89,8 @@ Keep adding rows here whenever we simplify something.
 | @mention notify | In-app + fake email log | Real email (and later digest / mute / preferences) |
 | Task comments | History + mentions on a task; **author can edit their own**, others cannot | Attachments, delete, audit of edits, rich text, email-to-comment |
 | Assignments | Simple assignee on a task | Multiple assignees, job roles, handoff, out-of-office |
-| Portfolio Gantt | All projects, milestones, on-track status, % complete fill (task rollup) | Dependencies, baselines, critical path, drag project bars |
-| Project status | A status you can set / see on the Gantt | Status driven by task progress, conditions, or schedule variance |
+| Portfolio Gantt | All projects, milestones, **schedule-aware status**, % complete fill (task rollup) | Dependencies, baselines, critical path, drag project bars |
+| Project status | **Computed** from schedule + open RAID (on_track / at_risk / off_track); no manual override in v1; stored on `projects.status` as a cache | Manual override that sticks until cleared; baselines / variance bands |
 | Risks & issues | Project RAID register + Home open list: type, title, description, assigned, **Due**, **severity** (low/medium/high/critical), four statuses, add, comments | Workflow/automation, probability×impact matrix, owners separate from assignee |
 | Reports | Open RAID list on Home (no separate Reports page) | Filters, saved reports, scheduled send, export, dashboards |
 | Audit | Little or none | Who changed what, when, for compliance |
@@ -155,7 +155,7 @@ This is what you see when you open the app. One timeline, every project.
 - Axis shows **fiscal year and quarter with months**. Q1 starts 1 April; year-end is 31 March. Label **FY2026-27** for 1 Apr 2026 – 31 Mar 2027.
 - A **today line** on the Gantt (vertical line at today’s date); the Today label sits on the fiscal row, not on the month names
 - **Milestones** on the bar (diamonds), with names
-- Status also shows on the bar (color), so you can read health without leaving the chart
+- Status also shows on the bar (color), so you can read health without leaving the chart. Status is **computed** from schedule and open RAID (hover the pill for a short tip).
 - Click a **project name** → that project’s task list (later screen)
 - Click a **milestone** → we can decide later (maybe the task it belongs to)
 
@@ -257,6 +257,19 @@ The separate **Reports** nav and page are removed. The open risks and issues lis
 
 Register lives on the project page above the plan (also linked from Home open list and header counts). Each item has type, title, description, assigned, **Due** (editable date), **severity** (`low` | `medium` | `high` | `critical` — one scale for risks and issues), and status. High/critical tint in the register; severity pills on Home and the detail page. Sorted by open-first, then severity, then due date.
 
+
+### Project status rules (computed)
+
+v1 is **computed-only** (no manual override). `projects.status` is updated whenever tasks/%/RAID change and whenever projects are listed. Rules use overall project % complete (day-weighted rollup of top-level tasks) and open RAID (`status != closed`).
+
+| Status | When (first match wins: off_track → at_risk → on_track) |
+|--------|----------------------------------------------------------|
+| **Off track** | (1) `end_date` before today **and** % complete &lt; 100; **or** (2) any open RAID with status **escalated**; **or** (3) any open **issue** with severity **critical**; **or** (4) **two or more** open RAID items with severity **high** or **critical** |
+| **At risk** | Not off track, and: (1) `end_date` within **14 days** (inclusive) and % &lt; 100; **or** (2) any open RAID (risk or issue) with severity **high** or **critical** |
+| **On track** | Otherwise |
+
+Seed examples (as of SCHEMA_VERSION 9): Tailing Ponds & Till = off_track (escalated / critical); Airborne & Beach = at_risk (high open RAID); Bobsled & Geothermal = on_track (no high/critical open RAID).
+
 ## Decisions log
 
 | Date | Decision |
@@ -285,3 +298,4 @@ Register lives on the project page above the plan (also linked from Home open li
 | 2026-08-21 | Open risks and issues list moved onto Home under the portfolio Gantt. Reports nav/page removed; `/reports` redirects to Home. |
 | 2026-09-05 | Header Inbox from email_log (unread badge, mark read, click-through to task/RAID). Portfolio Gantt bars show % complete rolled up from tasks. Fixed Open PPM Tool.command Node discovery + version checks. SCHEMA_VERSION 7 (read_at on email_log). |
 | 2026-09-05 | RAID due date (**Due**) + **severity** (`low`/`medium`/`high`/`critical`) on register, Home open list, and detail. SCHEMA_VERSION 8. Same scale for risks and issues (no separate probability field yet). |
+| 2026-09-05 | Project status is schedule- and RAID-aware (computed-only). Off track / at risk / on track rules documented above. SCHEMA_VERSION 9 (seed statuses + bobsled assay severity adjusted). |

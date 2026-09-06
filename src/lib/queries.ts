@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "./db";
+import { computeProjectStatus } from "./project-status";
 import { applyParentRollup, rollupFromChildren } from "./rollup";
 import type {
   Comment,
@@ -24,6 +25,41 @@ function asPlainList<T>(value: unknown): T[] {
   return JSON.parse(JSON.stringify(value)) as T[];
 }
 
+export function syncProjectStatus(projectId: number): ProjectStatus | undefined {
+  const row = getDb()
+    .prepare("SELECT id, end_date, status FROM projects WHERE id = ?")
+    .get(projectId) as { id: number; end_date: string; status: ProjectStatus } | undefined;
+  if (!row) return undefined;
+
+  const percentComplete = projectPercentComplete(projectId);
+  const openRaid = asPlainList<Pick<RaidItem, "type" | "status" | "severity">>(
+    getDb()
+      .prepare(
+        `SELECT type, status, severity FROM raid_items
+         WHERE project_id = ? AND status != 'closed'`
+      )
+      .all(projectId)
+  );
+  const next = computeProjectStatus({
+    endDate: row.end_date,
+    percentComplete,
+    openRaid,
+  });
+  if (next !== row.status) {
+    getDb()
+      .prepare("UPDATE projects SET status = ? WHERE id = ?")
+      .run(next, projectId);
+  }
+  return next;
+}
+
+export function syncAllProjectStatuses() {
+  const rows = getDb().prepare("SELECT id FROM projects").all() as { id: number }[];
+  for (const row of asPlainList<{ id: number }>(rows)) {
+    syncProjectStatus(row.id);
+  }
+}
+
 export function listUsers(): User[] {
   return asPlainList<User>(
     getDb().prepare("SELECT id, name, role FROM users ORDER BY id").all()
@@ -38,6 +74,7 @@ export function getUser(id: number): User | undefined {
 }
 
 export function listProjects(): Project[] {
+  syncAllProjectStatuses();
   return asPlainList<Project>(
     getDb()
     .prepare(
@@ -55,6 +92,7 @@ export function listProjects(): Project[] {
 }
 
 export function getProject(id: number): Project | undefined {
+  syncProjectStatus(id);
   const row = getDb()
     .prepare(
       `SELECT

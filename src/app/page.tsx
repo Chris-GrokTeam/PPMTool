@@ -2,12 +2,18 @@ import { AppHeader } from "@/components/AppHeader";
 import { ganttRangeFrom } from "@/components/Gantt";
 import { OpenRaidList } from "@/components/OpenRaidList";
 import { PortfolioGantt } from "@/components/PortfolioGantt";
-import { listOpenRaid, listProjects, listTasks } from "@/lib/queries";
+import {
+  listOpenRaid,
+  listProjects,
+  listTasks,
+  projectPercentComplete,
+} from "@/lib/queries";
 import { toISORange } from "@/lib/timeline";
 
 export default function PortfolioPage() {
   const projects = listProjects().map((project) => ({
     ...project,
+    percent_complete: projectPercentComplete(project.id),
     milestones: listTasks(project.id)
       .filter((task) => task.is_milestone)
       .map((task) => ({ date: task.start_date, title: task.name })),

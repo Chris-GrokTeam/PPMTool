@@ -8,10 +8,10 @@ GitHub holds the **source code**. The app runs in your browser after you start i
 
 ## What you can do
 
-- See all projects on a **portfolio Gantt** (status, open risks/issues, today line, milestones)
+- See all projects on a **portfolio Gantt** (status, open risks/issues, today line, milestones, **% complete** fill on bars)
 - Open a **project** for tasks, dates, % complete, and a task Gantt
-- Open a **task** and leave comments; `@Name` writes a fake email log
-- Switch fake staff in the top-right (Alex, Sam, Jordan)
+- Open a **task** and leave comments; `@Name` writes a fake email log and an **Inbox** notification
+- Switch fake staff in the top-right; open **Inbox** in the header to see your tags and jump to the thread
 - See **open risks and issues** listed under the Home portfolio Gantt
 
 ## Requirements
@@ -36,6 +36,13 @@ To wipe and reseed: `npm run reset-db`, then refresh (or restart `npm run dev`).
 
 **Finder:** double-click **`Open PPM Tool.command`**. Leave the Terminal window open; Safari opens localhost. If macOS blocks it: right-click → **Open**.
 
+The launcher:
+
+- `cd`s to the project folder (works no matter where you launched from)
+- Finds Node 22+ on `PATH`, Homebrew, nvm, fnm, or `~/.local/node-v*`
+- Shows a clear message (and waits for Return) if Node/npm is missing or Node is older than 22
+- Runs `npm install` on first use if `node_modules` is missing, then `npm run dev` and opens the browser
+
 Or from the project folder:
 
 ```bash
@@ -43,7 +50,7 @@ npm install
 npm run dev
 ```
 
-`./scripts/dev.sh` does the same and prepends a local Node 22 path if you installed Node under `~/.local/`.
+`./scripts/dev.sh` does the same Node discovery, then starts the dev server.
 
 ## Product notes
 

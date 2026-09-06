@@ -1,4 +1,4 @@
-# PPM Tool — Status snapshot (21 Aug 2026)
+# PPM Tool — Status snapshot (5 Sep 2026)
 
 **GitHub:** [github.com/Chris-GrokTeam/PPMTool](https://github.com/Chris-GrokTeam/PPMTool) (public). Personal manager note stays local only (`docs/vacation-note.md`, gitignored).
 
@@ -8,24 +8,25 @@ Workfront-inspired **learning app** on Chris’s Mac. Fictional Jamaican Geologi
 
 **Token note:** This session’s Grok Build log (quota under Premium, not a bill). Same work at API list prices would be roughly **$150–$350**.
 
-`docs/requirements.md` may still lag the app (e.g. RAID was marked “deferred” in the brief).
+`docs/requirements.md` tracks the living brief; RAID Due + severity and **schedule-aware project status** are documented.
 
 ---
 
 ## What we built
 
-- **Home:** all projects on one Gantt with status, open risk/issue counts, milestones, and today line; open risks and issues list underneath (title opens RAID comments).
-- **Project:** RAID register (assigned + four statuses, add, comments) above task table + Gantt; one-level outline; Gantt drag moves non-heading bars only (top-level leaves and milestones); headings locked.
-- **Task:** comment history; author edits own comments; `@mention` → email log on the thread (no notification inbox).
+- **Home:** all projects on one Gantt with **computed** status (schedule + open RAID), open risk/issue counts, milestones, today line, and **% complete** fill on project bars; open risks and issues list underneath with **Due** + severity pills (title opens RAID comments).
+- **Project:** RAID register (assigned, **Due**, **severity** low→critical, four statuses, add, comments) above task table + Gantt; one-level outline; Gantt drag moves non-heading bars only (top-level leaves and milestones); headings locked.
+- **Task:** comment history; author edits own comments; @mention → email log + header **Inbox** (click through to task/RAID thread).
 - **People:** fake staff switcher (`ppm_user` cookie). No login.
-- **Nav:** Home only (Reports removed; `/reports` redirects to Home).
+- **Nav:** Home + Inbox (Reports removed; `/reports` redirects to Home).
 - **Stack + run:** Next.js, TypeScript, Tailwind, SQLite. `npm run dev` → http://localhost:3000. Safari is the target browser. Name wrap is a toggle (default off). Brief: `docs/requirements.md`.
 
 ## What’s left
 
 **Polish this app**
 - Freeze Home names while the Gantt scrolls; fiscal header on the project plan; milestone click-through.
-- RAID: due dates, severity, richer register (assigned + four statuses + add + comments already work).
+- RAID: richer workflow later (probability×impact, automation); Due + severity are in.
+- Project status: optional manual override later; v1 is computed-only (see rule table in requirements).
 
 **Usable by a team**
 - Host it (e.g. Azure); shared database; backups and environments.
@@ -33,7 +34,7 @@ Workfront-inspired **learning app** on Chris’s Mac. Fictional Jamaican Geologi
 - Real email for `@mentions` (Microsoft 365 / Graph).
 
 **Not in v1 (Workfront-scale)**
-- Dependencies, baselines, critical path; drag project bars; status from schedule/progress.
+- Dependencies, baselines, critical path; drag project bars. (Status from schedule/RAID is in.)
 - Timesheets; resource / capacity; portfolios and programs.
 - Intake, approvals / stage gates, documents, custom forms, templates.
 - Financials; Agile boards; cross-project links; multi-company (tenants).

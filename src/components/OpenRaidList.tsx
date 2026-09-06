@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { RaidSeverityPill } from "@/components/StatusPill";
+import { formatDate } from "@/lib/dates";
 import { personLabel } from "@/lib/people";
 import { raidStatusLabel } from "@/lib/raid-status";
 import type { RaidItem } from "@/lib/types";
@@ -15,6 +17,8 @@ export function OpenRaidList({ items }: { items: RaidItem[] }) {
               <th className="px-3 py-2">Project</th>
               <th className="px-3 py-2">Title</th>
               <th className="px-3 py-2">Assigned</th>
+              <th className="px-3 py-2">Due</th>
+              <th className="px-3 py-2">Severity</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Description</th>
             </tr>
@@ -22,7 +26,7 @@ export function OpenRaidList({ items }: { items: RaidItem[] }) {
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-4 text-slate-500">
+                <td colSpan={8} className="px-3 py-4 text-slate-500">
                   No open risks or issues.
                 </td>
               </tr>
@@ -48,6 +52,10 @@ export function OpenRaidList({ items }: { items: RaidItem[] }) {
                   </td>
                   <td className="px-3 py-2">
                     {personLabel(item.assigned_name, item.assigned_role)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.due_date)}</td>
+                  <td className="px-3 py-2">
+                    <RaidSeverityPill severity={item.severity} />
                   </td>
                   <td className="px-3 py-2">{raidStatusLabel[item.status]}</td>
                   <td className="px-3 py-2 text-slate-700">{item.description}</td>

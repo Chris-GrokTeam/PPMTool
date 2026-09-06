@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { isISODate } from "@/lib/dates";
+import { isRaidSeverity } from "@/lib/raid-severity";
 import {
   findMentionedUserIds,
 } from "@/lib/mentions";
@@ -101,10 +103,21 @@ export async function createRaidItem(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const assignedId = Number(formData.get("assignedId"));
-  if (!projectId || !title || !description || !assignedId) return;
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const severity = String(formData.get("severity") ?? "").trim();
+  if (!projectId || !title || !description || !assignedId || !dueDate || !severity) return;
   if (type !== "risk" && type !== "issue") return;
   if (!getUser(assignedId)) return;
-  insertRaidItem({ projectId, type, title, description, assignedId });
+  if (!isISODate(dueDate) || !isRaidSeverity(severity)) return;
+  insertRaidItem({
+    projectId,
+    type,
+    title,
+    description,
+    assignedId,
+    dueDate,
+    severity,
+  });
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/");
   redirect(`/projects/${projectId}`);

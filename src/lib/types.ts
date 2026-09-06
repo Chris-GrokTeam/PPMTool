@@ -89,6 +89,9 @@ export type RaidItem = {
   assigned_name: string;
   assigned_role: string;
   status: RaidStatus;
+  due_date: string;
+  severity: RaidSeverity;
 };
 
 export type RaidStatus = "open" | "in_progress" | "escalated" | "closed";
+export type RaidSeverity = "low" | "medium" | "high" | "critical";

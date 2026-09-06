@@ -8,14 +8,14 @@ Workfront-inspired **learning app** on Chris’s Mac. Fictional Jamaican Geologi
 
 **Token note:** This session’s Grok Build log (quota under Premium, not a bill). Same work at API list prices would be roughly **$150–$350**.
 
-`docs/requirements.md` may still lag the app (e.g. RAID was marked “deferred” in the brief).
+`docs/requirements.md` tracks the living brief; RAID Due + severity are documented.
 
 ---
 
 ## What we built
 
-- **Home:** all projects on one Gantt with status, open risk/issue counts, milestones, today line, and **% complete** fill on project bars; open risks and issues list underneath (title opens RAID comments).
-- **Project:** RAID register (assigned + four statuses, add, comments) above task table + Gantt; one-level outline; Gantt drag moves non-heading bars only (top-level leaves and milestones); headings locked.
+- **Home:** all projects on one Gantt with status, open risk/issue counts, milestones, today line, and **% complete** fill on project bars; open risks and issues list underneath with **Due** + severity pills (title opens RAID comments).
+- **Project:** RAID register (assigned, **Due**, **severity** low→critical, four statuses, add, comments) above task table + Gantt; one-level outline; Gantt drag moves non-heading bars only (top-level leaves and milestones); headings locked.
 - **Task:** comment history; author edits own comments; @mention → email log + header **Inbox** (click through to task/RAID thread).
 - **People:** fake staff switcher (`ppm_user` cookie). No login.
 - **Nav:** Home + Inbox (Reports removed; `/reports` redirects to Home).
@@ -25,7 +25,7 @@ Workfront-inspired **learning app** on Chris’s Mac. Fictional Jamaican Geologi
 
 **Polish this app**
 - Freeze Home names while the Gantt scrolls; fiscal header on the project plan; milestone click-through.
-- RAID: due dates, severity, richer register (assigned + four statuses + add + comments already work).
+- RAID: richer workflow later (probability×impact, automation); Due + severity are in.
 
 **Usable by a team**
 - Host it (e.g. Azure); shared database; backups and environments.

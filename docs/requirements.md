@@ -65,7 +65,7 @@ These are the three jobs the first version should do well. How we *build* them c
 
 3. **Open risks and issues (portfolio)**
    - On **Home**, under the portfolio Gantt: a list of open risks and issues across projects.
-   - Title, description, assigned; click through to the item’s comments.
+   - Title, description, assigned, **Due**, **severity**; click through to the item’s comments.
 
 ## How we learn vs how we would make it real
 
@@ -91,7 +91,7 @@ Keep adding rows here whenever we simplify something.
 | Assignments | Simple assignee on a task | Multiple assignees, job roles, handoff, out-of-office |
 | Portfolio Gantt | All projects, milestones, on-track status, % complete fill (task rollup) | Dependencies, baselines, critical path, drag project bars |
 | Project status | A status you can set / see on the Gantt | Status driven by task progress, conditions, or schedule variance |
-| Risks & issues | Open counts on portfolio + project header; click through exists; **screen spec deferred** | We design the RAID section as a next step, then later: owners, due dates, severity, workflow |
+| Risks & issues | Project RAID register + Home open list: type, title, description, assigned, **Due**, **severity** (low/medium/high/critical), four statuses, add, comments | Workflow/automation, probability×impact matrix, owners separate from assignee |
 | Reports | Open RAID list on Home (no separate Reports page) | Filters, saved reports, scheduled send, export, dashboards |
 | Audit | Little or none | Who changed what, when, for compliance |
 | Multi-company | Single local app | Tenants, data isolation, admin console |
@@ -146,7 +146,7 @@ This is what you see when you open the app. One timeline, every project.
 **On the screen**
 
 - Top bar: app name (**PPM**), nav (**Home**), **who you are** (fake user switcher)
-- Below the Gantt: **Open risks and issues** across all projects (type, project, title, assigned, status, description). Title opens RAID comments.
+- Below the Gantt: **Open risks and issues** across all projects (type, project, title, assigned, **Due**, **severity** pill, status, description). Sorted critical→low then by due date. Title opens RAID comments.
 - **Home** is the landing screen (the portfolio Gantt)
 - Left columns: **Project**, **Status**, **Risks** (count), **Issues** (count). Each column has a drag handle on the header (same as the project plan). **Wrap text** wraps the project name only; status and counts stay on one line.
 - Hover a truncated name to see the full title. Hover a bar for start–end as `Aug 19, 2026`.
@@ -192,7 +192,7 @@ You get here by clicking a project name on the Gantt. This is the Workfront proj
 - A **today line** (vertical) so you immediately see where “now” is vs the work
 - Visual on-time: bar vs today line (and later, color if end date is before today and % complete is under 100%)
 - Click a **task name** → task with comment history
-- **Risks and issues** sit **above** the project plan (type, title, description, assigned with role). Click a title for comments. New rows can be added on the same page.
+- **Risks and issues** sit **above** the project plan (type, title, description, assigned with role, **Due**, **severity**, status). Click Comments for the thread. New rows can be added on the same page (defaults: Due = today+14, severity = medium).
 
 **v1 cut:** one-level outline (heading + tasks under it, not deeper). Risks & issues is an entry point only until we build that screen.
 
@@ -253,9 +253,9 @@ Sam  ·  Aug 18, 2026
 
 The separate **Reports** nav and page are removed. The open risks and issues list now sits on **Home** under the portfolio Gantt. Project health filters and the secondary project table from Reports were not carried over (Home already shows status and RAID counts on the Gantt). `/reports` redirects to Home.
 
-### Screen — Risks & issues (from a project) — NEXT STEP, no spec yet
+### Screen — Risks & issues (on the project) — IN APP
 
-Opened from the project header counts. Chris is not writing requirements for this now. We invent and build it after the core screens (portfolio, project Gantt, task comments, reports). Still needs to exist so the portfolio/project **counts are real**.
+Register lives on the project page above the plan (also linked from Home open list and header counts). Each item has type, title, description, assigned, **Due** (editable date), **severity** (`low` | `medium` | `high` | `critical` — one scale for risks and issues), and status. High/critical tint in the register; severity pills on Home and the detail page. Sorted by open-first, then severity, then due date.
 
 ## Decisions log
 
@@ -284,3 +284,4 @@ Opened from the project header counts. Chris is not writing requirements for thi
 | 2026-08-20 | Home data columns are independent (Project, Status, Risks, Issues) with per-column resize like the plan. Wrap only applies to the project name. Fiscal Gantt header unchanged. |
 | 2026-08-21 | Open risks and issues list moved onto Home under the portfolio Gantt. Reports nav/page removed; `/reports` redirects to Home. |
 | 2026-09-05 | Header Inbox from email_log (unread badge, mark read, click-through to task/RAID). Portfolio Gantt bars show % complete rolled up from tasks. Fixed Open PPM Tool.command Node discovery + version checks. SCHEMA_VERSION 7 (read_at on email_log). |
+| 2026-09-05 | RAID due date (**Due**) + **severity** (`low`/`medium`/`high`/`critical`) on register, Home open list, and detail. SCHEMA_VERSION 8. Same scale for risks and issues (no separate probability field yet). |

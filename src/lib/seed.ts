@@ -60,21 +60,21 @@ export function seed(database: DatabaseSync) {
       (9, 5, 'You were tagged on Draft project charter', '2026-08-15T09:00:00'),
       (9, 7, 'You were tagged on Draft project charter', '2026-08-15T09:00:00');
 
-    INSERT INTO raid_items (id, project_id, type, title, description, assigned_id, status) VALUES
-      (1, 1, 'risk', 'Facility access delays', 'Some historic tailings sites need owner permission before cores can be collected.', 4, 'in_progress'),
-      (2, 1, 'issue', 'Award recommendation still open', 'Proposal evaluation is not closed; award notice cannot be posted until the technical panel notes are filed.', 5, 'escalated'),
-      (3, 2, 'risk', 'Weather windows for gravity lines', 'North-coast gravity infill is slipping because of persistent cloud and turbulence.', 9, 'open'),
-      (4, 2, 'risk', 'Aircraft maintenance slot', 'Contractor flagged a possible unscheduled maintenance day in September.', 4, 'closed'),
-      (5, 2, 'issue', 'Kingston block community notices aging', 'Notices need a refresh if acquisition slips past the posted dates.', 11, 'in_progress'),
-      (6, 3, 'risk', 'Catalogue mismatches in bobsled boxes', 'A small set of 1988 labels do not match the modern sample IDs.', 8, 'closed'),
-      (7, 3, 'issue', 'Assay batch waiting on QA/QC', 'First pulp batch cannot be released to GIS until blanks and duplicates clear.', 10, 'open'),
-      (8, 4, 'risk', 'Incomplete historic heat-flow points', 'Several legacy wells have temperature data but no reliable coordinates.', 6, 'open'),
-      (9, 4, 'issue', 'Clarendon warm seeps unclassified', 'Field team wants a chief geologist review before ranking those features.', 2, 'open'),
-      (10, 5, 'risk', 'Lab throughput for heavy-mineral concentrates', 'Concentrate work is slower than the charter assumed.', 10, 'open'),
-      (11, 5, 'issue', 'Three-week lab backlog', 'Reanalysis queue is behind plan and will push interpretation unless overtime is approved.', 4, 'open'),
-      (12, 5, 'issue', 'Missing bag tags in parish 12', 'Twelve alluvium bags have no parish code; they are on hold.', 8, 'open'),
-      (13, 6, 'risk', 'Seasonal swell on the south coast', 'Heavy-mineral sampling may miss the planned window if swell stays high.', 8, 'open'),
-      (14, 6, 'risk', 'Vessel support still unprocured', 'Charter is not approved yet; RFP for vessel and ATV support cannot start.', 5, 'open');
+    INSERT INTO raid_items (id, project_id, type, title, description, assigned_id, status, due_date, severity) VALUES
+      (1, 1, 'risk', 'Facility access delays', 'Some historic tailings sites need owner permission before cores can be collected.', 4, 'in_progress', '2026-09-30', 'high'),
+      (2, 1, 'issue', 'Award recommendation still open', 'Proposal evaluation is not closed; award notice cannot be posted until the technical panel notes are filed.', 5, 'escalated', '2026-09-12', 'critical'),
+      (3, 2, 'risk', 'Weather windows for gravity lines', 'North-coast gravity infill is slipping because of persistent cloud and turbulence.', 9, 'open', '2026-10-15', 'high'),
+      (4, 2, 'risk', 'Aircraft maintenance slot', 'Contractor flagged a possible unscheduled maintenance day in September.', 4, 'closed', '2026-09-05', 'medium'),
+      (5, 2, 'issue', 'Kingston block community notices aging', 'Notices need a refresh if acquisition slips past the posted dates.', 11, 'in_progress', '2026-09-20', 'medium'),
+      (6, 3, 'risk', 'Catalogue mismatches in bobsled boxes', 'A small set of 1988 labels do not match the modern sample IDs.', 8, 'closed', '2026-06-01', 'low'),
+      (7, 3, 'issue', 'Assay batch waiting on QA/QC', 'First pulp batch cannot be released to GIS until blanks and duplicates clear.', 10, 'open', '2026-09-18', 'high'),
+      (8, 4, 'risk', 'Incomplete historic heat-flow points', 'Several legacy wells have temperature data but no reliable coordinates.', 6, 'open', '2026-11-30', 'medium'),
+      (9, 4, 'issue', 'Clarendon warm seeps unclassified', 'Field team wants a chief geologist review before ranking those features.', 2, 'open', '2026-09-25', 'medium'),
+      (10, 5, 'risk', 'Lab throughput for heavy-mineral concentrates', 'Concentrate work is slower than the charter assumed.', 10, 'open', '2026-10-01', 'high'),
+      (11, 5, 'issue', 'Three-week lab backlog', 'Reanalysis queue is behind plan and will push interpretation unless overtime is approved.', 4, 'open', '2026-09-15', 'critical'),
+      (12, 5, 'issue', 'Missing bag tags in parish 12', 'Twelve alluvium bags have no parish code; they are on hold.', 8, 'open', '2026-09-22', 'low'),
+      (13, 6, 'risk', 'Seasonal swell on the south coast', 'Heavy-mineral sampling may miss the planned window if swell stays high.', 8, 'open', '2026-12-15', 'medium'),
+      (14, 6, 'risk', 'Vessel support still unprocured', 'Charter is not approved yet; RFP for vessel and ATV support cannot start.', 5, 'open', '2026-10-31', 'high');
 
     INSERT INTO comments (id, task_id, raid_item_id, author_id, body, created_at, updated_at) VALUES
       (10, NULL, 1, 4, '@Devon access letters are with the parish offices. If they stall, we will flag this at the next execution huddle.', '2026-08-16T09:20:00', '2026-08-16T09:20:00'),

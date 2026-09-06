@@ -7,6 +7,8 @@ export async function POST(request: Request) {
     title?: string;
     description?: string;
     status?: string;
+    dueDate?: string;
+    severity?: string;
   };
   if (body.id == null) {
     return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });

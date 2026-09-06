@@ -5,7 +5,7 @@ import path from "node:path";
 import { seed } from "./seed";
 
 const dbPath = path.join(process.cwd(), "data", "ppm.sqlite");
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 let db: DatabaseSync | null = null;
 
@@ -93,7 +93,9 @@ function migrate(database: DatabaseSync) {
       title TEXT NOT NULL,
       description TEXT NOT NULL,
       assigned_id INTEGER NOT NULL REFERENCES users(id),
-      status TEXT NOT NULL
+      status TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      severity TEXT NOT NULL
     );
 
     CREATE TABLE comments (

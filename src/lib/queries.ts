@@ -8,6 +8,7 @@ import type {
   Project,
   ProjectStatus,
   RaidItem,
+  RaidSeverity,
   RaidStatus,
   RaidType,
   Task,
@@ -186,12 +187,15 @@ export function listRaidForProject(projectId: number): RaidItem[] {
     getDb()
       .prepare(
         `SELECT r.id, r.project_id, p.name AS project_name, r.type, r.title,
-                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status
+                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status,
+                r.due_date, r.severity
          FROM raid_items r
          JOIN projects p ON p.id = r.project_id
          JOIN users u ON u.id = r.assigned_id
          WHERE r.project_id = ?
          ORDER BY CASE r.status WHEN 'closed' THEN 1 ELSE 0 END,
+                  CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+                  r.due_date,
                   CASE r.type WHEN 'risk' THEN 0 ELSE 1 END,
                   r.id`
       )
@@ -217,12 +221,17 @@ export function listOpenRaid(filters: {
     getDb()
     .prepare(
       `SELECT r.id, r.project_id, p.name AS project_name, r.type, r.title,
-              r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status
+                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status,
+                r.due_date, r.severity
        FROM raid_items r
        JOIN projects p ON p.id = r.project_id
        JOIN users u ON u.id = r.assigned_id
        WHERE ${clauses.join(" AND ")}
-       ORDER BY p.name, CASE r.type WHEN 'risk' THEN 0 ELSE 1 END, r.id`
+       ORDER BY CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+              r.due_date,
+              p.name,
+              CASE r.type WHEN 'risk' THEN 0 ELSE 1 END,
+              r.id`
     )
     .all(...params)
   );
@@ -371,7 +380,8 @@ export function getRaidItem(id: number): RaidItem | undefined {
   const row = getDb()
     .prepare(
       `SELECT r.id, r.project_id, p.name AS project_name, r.type, r.title,
-              r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status
+                r.description, r.assigned_id, u.name AS assigned_name, u.role AS assigned_role, r.status,
+                r.due_date, r.severity
        FROM raid_items r
        JOIN projects p ON p.id = r.project_id
        JOIN users u ON u.id = r.assigned_id
@@ -387,12 +397,22 @@ export function insertRaidItem(input: {
   title: string;
   description: string;
   assignedId: number;
+  dueDate: string;
+  severity: RaidSeverity;
 }): number {
   const result = getDb()
     .prepare(
-      "INSERT INTO raid_items (project_id, type, title, description, assigned_id, status) VALUES (?, ?, ?, ?, ?, 'open')"
+      "INSERT INTO raid_items (project_id, type, title, description, assigned_id, status, due_date, severity) VALUES (?, ?, ?, ?, ?, 'open', ?, ?)"
     )
-    .run(input.projectId, input.type, input.title, input.description, input.assignedId);
+    .run(
+      input.projectId,
+      input.type,
+      input.title,
+      input.description,
+      input.assignedId,
+      input.dueDate,
+      input.severity
+    );
   return Number(result.lastInsertRowid);
 }
 
@@ -401,10 +421,14 @@ export function updateRaidItem(input: {
   title: string;
   description: string;
   status: RaidStatus;
+  dueDate: string;
+  severity: RaidSeverity;
 }) {
   getDb()
-    .prepare("UPDATE raid_items SET title = ?, description = ?, status = ? WHERE id = ?")
-    .run(input.title, input.description, input.status, input.id);
+    .prepare(
+      "UPDATE raid_items SET title = ?, description = ?, status = ?, due_date = ?, severity = ? WHERE id = ?"
+    )
+    .run(input.title, input.description, input.status, input.dueDate, input.severity, input.id);
 }
 
 export function insertComment(taskId: number, authorId: number, body: string): number {

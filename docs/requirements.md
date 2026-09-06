@@ -176,25 +176,25 @@ Q3 launch         Off track     0      5   |          |████████�
 
 ### Screen 2 — Project (task list + Gantt) — CONFIRMED
 
-You get here by clicking a project name on the Gantt. This is the Workfront project page: header, task table, and a **task Gantt on the far right**. Click a task to open comments (next screen).
+You get here by clicking a project name on the Gantt. This is the Workfront project page: header, **two-pane project plan**, and a **task Gantt on the far right**. Click **Comments** on a row to open the thread (next screen).
 
 **On the screen**
 
 - Same top bar (nav + user switcher)
 - Back link to **Home**
 - Header: project name, status, dates, owner, **open risks / open issues** counts
-- Click **Risks** or **Issues** (the counts) → Risks & issues section (next step; no spec yet — we will design it when we build it)
-- Task table columns: **#** (outline 1, 1.1, 2), name, assignee, **start date**, **end date**, **% complete**, status — **name and assignee are always editable**. Dates, %, and status are editable on a task; on a **heading that has tasks under it** they are display-only.
+- Click **Risks** or **Issues** (the counts) → Risks & issues section
+- **Two-pane project plan:** **left** = outline (`#` / WBS, task name, drag handle, ←/→) with clear parent vs child (heading band, ▾ / └ markers). **Right** = assigned, start, end, %, status, Gantt. A splitter resizes the outline pane; the outline stays visible while the schedule scrolls horizontally. Row selection highlights the active row.
+- **Name and assignee are always editable**. Dates, %, and status are editable on a task; on a **heading that has tasks under it** they are display-only.
 - **Heading rollup:** while a row has children, start = earliest child start, end = latest child end, % = duration-weighted from children, status = Complete if every child is complete, Not started if every child is not started, otherwise In progress. A heading is not a milestone. A top-level row with no children is a normal task.
 - **Outline:** drag the row handle (left of the name, not the Gantt) to reorder. A heading takes its tasks with it. **→** places a task under the heading above; **←** moves it back out, sitting after that heading’s block. Numbers update after each move. They are not the database id.
 - **Far right:** a Gantt, one bar per task (milestone = diamond), aligned to the same timeline
 - Drag a **child** bar to move dates; drag the bar **ends** to change start or end only. A heading bar is a summary and is not draggable. Gantt drag never reorders rows. Dates never auto-sort the list.
 - A **today line** (vertical) so you immediately see where “now” is vs the work
 - Visual on-time: bar vs today line (and later, color if end date is before today and % complete is under 100%)
-- Click a **task name** → task with comment history
 - **Risks and issues** sit **above** the project plan (type, title, description, assigned with role). Click a title for comments. New rows can be added on the same page.
 
-**v1 cut:** one-level outline (heading + tasks under it, not deeper). Risks & issues is an entry point only until we build that screen.
+**v1 cut:** one-level outline (heading + tasks under it, not deeper). No collapse/expand headings yet.
 
 ```
 [ PPM ]   Home | Reports                         You are: Alex (PM) ▾

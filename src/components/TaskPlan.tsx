@@ -6,10 +6,11 @@ import {
   useEffect,
   useRef,
   useState,
-  type Dispatch,
-  type PointerEvent as ReactPointerEvent,
   type CSSProperties,
+  type Dispatch,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
   type SetStateAction,
 } from "react";
 import { GanttHeader, TodayMarker } from "@/components/Gantt";
@@ -29,9 +30,7 @@ import { fromISORange, pct, type TimelineRange, type TimelineRangeISO } from "@/
 import type { Task, TaskStatus, User } from "@/lib/types";
 
 const COLS = ["wbs", "task", "assigned", "start", "end", "pct", "status", "gantt"] as const;
-const DATA_COLS = ["wbs", "task", "assigned", "start", "end", "pct", "status"] as const;
 type ColId = (typeof COLS)[number];
-type DataColId = (typeof DATA_COLS)[number];
 
 const DEFAULT_WIDTHS: Record<ColId, number> = {
   wbs: 52,
@@ -55,12 +54,20 @@ const MIN_WIDTHS: Record<ColId, number> = {
   gantt: 200,
 };
 
-const STORAGE_KEY = "ppm-plan-layout-v2";
+const DEFAULT_LEFT_PANE = DEFAULT_WIDTHS.wbs + DEFAULT_WIDTHS.task + 8;
+const MIN_LEFT_PANE = 220;
+const STORAGE_KEY = "ppm-plan-layout-v3";
 
 type DragState = {
   taskId: number;
   overId: number;
   position: "before" | "after";
+};
+
+type LayoutState = {
+  widths: Record<ColId, number>;
+  wrap: boolean;
+  leftPaneWidth: number;
 };
 
 function clampWidths(input?: Partial<Record<ColId, unknown>>): Record<ColId, number> {
@@ -74,18 +81,30 @@ function clampWidths(input?: Partial<Record<ColId, unknown>>): Record<ColId, num
   return next;
 }
 
-function loadLayout(): { widths: Record<ColId, number>; wrap: boolean } {
+function loadLayout(): LayoutState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { widths: { ...DEFAULT_WIDTHS }, wrap: false };
-    const parsed = JSON.parse(raw) as { widths?: Partial<Record<ColId, unknown>>; wrap?: boolean };
-    return { wrap: Boolean(parsed.wrap), widths: clampWidths(parsed.widths) };
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem("ppm-plan-layout-v2");
+    if (!raw) return { widths: { ...DEFAULT_WIDTHS }, wrap: false, leftPaneWidth: DEFAULT_LEFT_PANE };
+    const parsed = JSON.parse(raw) as {
+      widths?: Partial<Record<ColId, unknown>>;
+      wrap?: boolean;
+      leftPaneWidth?: unknown;
+    };
+    const widths = clampWidths(parsed.widths);
+    const leftPaneWidth = Number(parsed.leftPaneWidth);
+    return {
+      wrap: Boolean(parsed.wrap),
+      widths,
+      leftPaneWidth: Number.isFinite(leftPaneWidth)
+        ? Math.max(MIN_LEFT_PANE, Math.round(leftPaneWidth))
+        : widths.wbs + widths.task + 8,
+    };
   } catch {
-    return { widths: { ...DEFAULT_WIDTHS }, wrap: false };
+    return { widths: { ...DEFAULT_WIDTHS }, wrap: false, leftPaneWidth: DEFAULT_LEFT_PANE };
   }
 }
 
-function saveLayout(layout: { widths: Record<ColId, number>; wrap: boolean }) {
+function saveLayout(layout: LayoutState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
   } catch {
@@ -95,6 +114,17 @@ function saveLayout(layout: { widths: Record<ColId, number>; wrap: boolean }) {
 
 function dataBox(width: number): CSSProperties {
   return { width, minWidth: width, maxWidth: width };
+}
+
+function rowChrome(dragging: boolean, dropWhere: "before" | "after" | null, selected: boolean) {
+  const dropShadow =
+    dropWhere === "before"
+      ? "shadow-[inset_0_2px_0_0_#0284c7]"
+      : dropWhere === "after"
+        ? "shadow-[inset_0_-2px_0_0_#0284c7]"
+        : "";
+  const bg = dragging ? "bg-sky-50" : selected ? "bg-sky-50/70" : "";
+  return `${bg} ${dropShadow}`.trim();
 }
 
 export function TaskPlan({
@@ -112,25 +142,32 @@ export function TaskPlan({
   const router = useRouter();
   const [widths, setWidths] = useState<Record<ColId, number>>(DEFAULT_WIDTHS);
   const [wrap, setWrap] = useState(false);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LEFT_PANE);
   const [ready, setReady] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  const planRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const layout = loadLayout();
     setWidths(layout.widths);
     setWrap(layout.wrap);
+    setLeftPaneWidth(layout.leftPaneWidth);
     setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    saveLayout({ widths, wrap });
-  }, [ready, widths, wrap]);
+    saveLayout({ widths, wrap, leftPaneWidth });
+  }, [ready, widths, wrap, leftPaneWidth]);
 
-  const dataWidth = DATA_COLS.reduce((sum, col) => sum + widths[col], 0);
+  const rightDataWidth = (["assigned", "start", "end", "pct", "status"] as const).reduce(
+    (sum, col) => sum + widths[col],
+    0
+  );
   const ganttMin = Math.max(MIN_WIDTHS.gantt, widths.gantt);
-  const tableMinWidth = dataWidth + ganttMin;
+  const rightMinWidth = rightDataWidth + ganttMin;
   const parents = tasks.filter((task) => task.parent_id == null);
   const rows = tasks.map((task) => ({ id: task.id, parent_id: task.parent_id }));
   const numbers = outlineNumbers(rows);
@@ -167,90 +204,94 @@ export function TaskPlan({
           Wrap text {wrap ? "on" : "off"}
         </button>
       </div>
-      <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-        <div style={{ minWidth: tableMinWidth }}>
-          <table className="w-full table-fixed border-collapse text-left text-sm">
-            <colgroup>
-              {DATA_COLS.map((col) => (
-                <col key={col} style={{ width: widths[col] }} />
-              ))}
-              <col />
-            </colgroup>
-            <thead>
-              <tr className="bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
+      <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+        <div ref={planRootRef} data-plan-root className="overflow-auto">
+          <div className="min-w-max">
+            <div className="sticky top-0 z-30 flex bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
+              <div
+                className="sticky left-0 z-40 flex shrink-0 border-r border-slate-200 bg-slate-50"
+                style={{ width: leftPaneWidth }}
+              >
                 <HeaderCell label="#" col="wbs" widths={widths} setWidths={setWidths} />
                 <HeaderCell label="Task" col="task" widths={widths} setWidths={setWidths} />
+                <PaneSplitter leftPaneWidth={leftPaneWidth} setLeftPaneWidth={setLeftPaneWidth} />
+              </div>
+              <div className="flex" style={{ minWidth: rightMinWidth }}>
                 <HeaderCell label="Assigned" col="assigned" widths={widths} setWidths={setWidths} />
                 <HeaderCell label="Start" col="start" widths={widths} setWidths={setWidths} />
                 <HeaderCell label="End" col="end" widths={widths} setWidths={setWidths} />
                 <HeaderCell label="%" col="pct" widths={widths} setWidths={setWidths} />
                 <HeaderCell label="Status" col="status" widths={widths} setWidths={setWidths} />
-                <th
+                <div
                   className="relative border-b border-l border-slate-200 p-0 font-medium"
-                  style={{ minWidth: ganttMin }}
+                  style={{ width: ganttMin, minWidth: ganttMin }}
                 >
                   <GanttHeader range={range} />
                   <ResizeHandle col="gantt" widths={widths} setWidths={setWidths} />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  projectId={projectId}
-                  task={task}
-                  users={users}
-                  range={range}
-                  wrap={wrap}
-                  widths={widths}
-                  ganttMin={ganttMin}
-                  wbs={numbers[task.id] ?? ""}
-                  summary={hasChildren(rows, task.id)}
-                  indentable={canIndent(rows, task.id)}
-                  outdentable={canOutdent(rows, task.id)}
-                  dragging={Boolean(draggedBlock?.has(task.id))}
-                  dropWhere={edge?.taskId === task.id ? edge.where : null}
-                  onIndent={() => void postMove({ taskId: task.id, action: "indent" })}
-                  onOutdent={() => void postMove({ taskId: task.id, action: "outdent" })}
-                  onDragOver={(overId, position) => {
-                    const next = { taskId: task.id, overId, position };
-                    dragRef.current = next;
-                    setDrag(next);
-                  }}
-                  onDragEnd={(moved) => {
-                    const current = dragRef.current;
-                    dragRef.current = null;
-                    setDrag(null);
-                    document.body.style.cursor = "";
-                    document.body.style.userSelect = "";
-                    document.body.style.removeProperty("-webkit-user-select");
-                    if (!moved || !current) return;
-                    const nextBefore = dropBeforeId(
-                      rows,
-                      current.taskId,
-                      current.overId,
-                      current.position
-                    );
-                    if (nextBefore === undefined) return;
-                    void postMove({
-                      taskId: current.taskId,
-                      action: "reorder",
-                      beforeTaskId: nextBefore,
-                    });
-                  }}
-                />
-              ))}
-            </tbody>
-          </table>
+                </div>
+              </div>
+            </div>
+            {tasks.map((task) => (
+              <TaskRow
+                key={task.id}
+                projectId={projectId}
+                task={task}
+                users={users}
+                range={range}
+                wrap={wrap}
+                widths={widths}
+                ganttMin={ganttMin}
+                rightMinWidth={rightMinWidth}
+                leftPaneWidth={leftPaneWidth}
+                wbs={numbers[task.id] ?? ""}
+                summary={hasChildren(rows, task.id)}
+                indentable={canIndent(rows, task.id)}
+                outdentable={canOutdent(rows, task.id)}
+                selected={selectedId === task.id}
+                dragging={Boolean(draggedBlock?.has(task.id))}
+                dropWhere={edge?.taskId === task.id ? edge.where : null}
+                planRootRef={planRootRef}
+                onSelect={() => setSelectedId(task.id)}
+                onIndent={() => void postMove({ taskId: task.id, action: "indent" })}
+                onOutdent={() => void postMove({ taskId: task.id, action: "outdent" })}
+                onDragOver={(overId, position) => {
+                  const next = { taskId: task.id, overId, position };
+                  dragRef.current = next;
+                  setDrag(next);
+                }}
+                onDragEnd={(moved) => {
+                  const current = dragRef.current;
+                  dragRef.current = null;
+                  setDrag(null);
+                  document.body.style.cursor = "";
+                  document.body.style.userSelect = "";
+                  document.body.style.removeProperty("-webkit-user-select");
+                  if (!moved || !current) return;
+                  const nextBefore = dropBeforeId(
+                    rows,
+                    current.taskId,
+                    current.overId,
+                    current.position
+                  );
+                  if (nextBefore === undefined) return;
+                  void postMove({
+                    taskId: current.taskId,
+                    action: "reorder",
+                    beforeTaskId: nextBefore,
+                  });
+                }}
+              />
+            ))}
+          </div>
         </div>
         <AddTaskForm projectId={projectId} users={users} parents={parents} />
         <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
-          Drag the handle to reorder. A heading takes its tasks with it. Use → to put a
-          task under the heading above, ← to move it back out. Numbers (1, 1.1, 2) update
-          after each move. A heading’s dates, %, and status come from the tasks under it.
-          Dates do not reorder the plan. Drag a child Gantt bar to change that task’s
-          dates only. Comments opens the thread.
+          Left pane is the outline (parent headings vs child tasks). Right pane is schedule and
+          Gantt. Drag the handle to reorder — a heading takes its tasks with it. Use → to put a
+          task under the heading above, ← to move it back out. Numbers (1, 1.1, 2) update after
+          each move. A heading’s dates, %, and status come from the tasks under it. Dates do not
+          reorder the plan. Drag a child Gantt bar to change that task’s dates only. Comments
+          opens the thread.
         </p>
       </div>
     </section>
@@ -264,18 +305,65 @@ function HeaderCell({
   setWidths,
 }: {
   label: string;
-  col: DataColId;
+  col: Exclude<ColId, "gantt">;
   widths: Record<ColId, number>;
   setWidths: Dispatch<SetStateAction<Record<ColId, number>>>;
 }) {
   return (
-    <th
+    <div
       className="relative border-b border-slate-200 px-2 py-2 font-medium select-none"
       style={dataBox(widths[col])}
     >
       {label}
       <ResizeHandle col={col} widths={widths} setWidths={setWidths} />
-    </th>
+    </div>
+  );
+}
+
+function PaneSplitter({
+  leftPaneWidth,
+  setLeftPaneWidth,
+}: {
+  leftPaneWidth: number;
+  setLeftPaneWidth: Dispatch<SetStateAction<number>>;
+}) {
+  function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    const originX = event.clientX;
+    const originWidth = leftPaneWidth;
+    const onMove = (moveEvent: PointerEvent) => {
+      setLeftPaneWidth(Math.max(MIN_LEFT_PANE, originWidth + (moveEvent.clientX - originX)));
+    };
+    const onEnd = () => {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
+      if (handle.hasPointerCapture(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.body.style.removeProperty("-webkit-user-select");
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.body.style.setProperty("-webkit-user-select", "none");
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd);
+    handle.addEventListener("pointercancel", onEnd);
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label="Resize outline pane"
+      title="Drag to resize the outline pane"
+      className="absolute top-0 right-0 z-30 h-full w-2 translate-x-1/2 cursor-col-resize touch-none bg-slate-300/80 hover:bg-sky-500"
+      onPointerDown={onPointerDown}
+    />
   );
 }
 
@@ -288,8 +376,6 @@ function ResizeHandle({
   widths: Record<ColId, number>;
   setWidths: Dispatch<SetStateAction<Record<ColId, number>>>;
 }) {
-  const handleRef = useRef<HTMLButtonElement>(null);
-
   function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
@@ -324,7 +410,6 @@ function ResizeHandle({
 
   return (
     <button
-      ref={handleRef}
       type="button"
       aria-label={`Resize ${col} column`}
       className="absolute top-0 right-0 z-20 h-full w-4 cursor-col-resize touch-none select-none hover:bg-sky-500/40"
@@ -341,12 +426,17 @@ function TaskRow({
   wrap,
   widths,
   ganttMin,
+  rightMinWidth,
+  leftPaneWidth,
   wbs,
   summary,
   indentable,
   outdentable,
+  selected,
   dragging,
   dropWhere,
+  planRootRef,
+  onSelect,
   onIndent,
   onOutdent,
   onDragOver,
@@ -359,12 +449,17 @@ function TaskRow({
   wrap: boolean;
   widths: Record<ColId, number>;
   ganttMin: number;
+  rightMinWidth: number;
+  leftPaneWidth: number;
   wbs: string;
   summary: boolean;
   indentable: boolean;
   outdentable: boolean;
+  selected: boolean;
   dragging: boolean;
   dropWhere: "before" | "after" | null;
+  planRootRef: RefObject<HTMLDivElement | null>;
+  onSelect: () => void;
   onIndent: () => void;
   onOutdent: () => void;
   onDragOver: (overId: number, position: "before" | "after") => void;
@@ -377,6 +472,8 @@ function TaskRow({
   const [endDate, setEndDate] = useState(task.end_date);
   const [percent, setPercent] = useState(String(task.percent_complete));
   const [status, setStatus] = useState<TaskStatus>(task.status);
+  const isChild = task.parent_id != null;
+  const isHeading = !isChild;
 
   useEffect(() => {
     setName(task.name);
@@ -447,9 +544,9 @@ function TaskRow({
       if (!Number.isFinite(overId)) return;
       if (movingParent) {
         const headId = Number(hit.dataset.blockHead);
-        const table = hit.closest("table");
-        const blockRows = table
-          ? table.querySelectorAll(`[data-block-head="${headId}"]`)
+        const root = planRootRef.current;
+        const blockRows = root
+          ? root.querySelectorAll(`[data-block-head="${headId}"]`)
           : [hit];
         const first = blockRows[0];
         const last = blockRows[blockRows.length - 1];
@@ -486,28 +583,51 @@ function TaskRow({
   const numberField = `${field} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`;
   const indentBtn =
     "h-6 w-6 shrink-0 rounded text-sm text-slate-600 outline-hidden hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30";
-  const dropShadow =
-    dropWhere === "before"
-      ? "shadow-[inset_0_2px_0_0_#0284c7]"
-      : dropWhere === "after"
-        ? "shadow-[inset_0_-2px_0_0_#0284c7]"
-        : "";
+  const chrome = rowChrome(dragging, dropWhere, selected);
+  const leftBand = isHeading
+    ? selected || dragging
+      ? "bg-slate-100"
+      : "bg-slate-50"
+    : selected || dragging
+      ? "bg-sky-50/70"
+      : "bg-white";
 
   return (
-    <tr
+    <div
       data-task-id={task.id}
       data-block-head={task.parent_id ?? task.id}
-      className={`${dragging ? "bg-sky-50" : ""} ${dropShadow}`}
+      className={`flex border-b border-slate-100 ${chrome}`}
+      onMouseDown={onSelect}
     >
-      <td
-        className="border-b border-slate-100 px-2 py-1 align-top font-mono text-xs whitespace-nowrap tabular-nums text-slate-500"
-        style={dataBox(widths.wbs)}
+      <div
+        className={`sticky left-0 z-20 flex shrink-0 border-r border-slate-200 ${leftBand}`}
+        style={{ width: leftPaneWidth }}
       >
-        {wbs}
-      </td>
-      <td className="border-b border-slate-100 px-2 py-1 align-top" style={dataBox(widths.task)}>
-        <div style={{ paddingLeft: task.parent_id ? 12 : 0 }}>
-          <div className="flex items-start gap-0.5">
+        <div
+          className="border-r border-slate-100 px-2 py-1.5 font-mono text-xs whitespace-nowrap tabular-nums text-slate-500"
+          style={dataBox(widths.wbs)}
+        >
+          {wbs}
+        </div>
+        <div className="min-w-0 flex-1 px-2 py-1.5" style={{ maxWidth: widths.task + 40 }}>
+          <div className="flex items-start gap-0.5" style={{ paddingLeft: isChild ? 8 : 0 }}>
+            {isChild ? (
+              <span
+                className="mt-1.5 mr-1 w-3 shrink-0 text-slate-400"
+                aria-hidden="true"
+                title="Child task"
+              >
+                └
+              </span>
+            ) : (
+              <span
+                className="mt-1.5 mr-1 w-3 shrink-0 text-slate-500"
+                aria-hidden="true"
+                title="Heading"
+              >
+                ▾
+              </span>
+            )}
             <button
               type="button"
               aria-label="Drag to reorder"
@@ -547,149 +667,162 @@ function TaskRow({
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
+              onFocus={onSelect}
               onBlur={() => {
                 if (name.trim() && name.trim() !== task.name) void persist({ name: name.trim() });
               }}
               className={`${field} ${wrap ? "" : "truncate"} ${
-                task.parent_id ? "font-medium" : "font-semibold"
+                isChild ? "font-medium text-slate-800" : "font-semibold text-slate-900"
               }`}
               aria-label="Task name"
             />
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 pl-16">
+          <div className={`mt-1 flex flex-wrap items-center gap-2 ${isChild ? "pl-20" : "pl-16"}`}>
             <Link
               href={`/projects/${projectId}/tasks/${task.id}`}
               className="text-[11px] text-sky-800 hover:underline"
             >
               Comments
             </Link>
+            {isHeading && summary ? (
+              <span className="text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+                Heading
+              </span>
+            ) : null}
           </div>
         </div>
-      </td>
-      <td className="border-b border-slate-100 px-2 py-1 align-top" style={dataBox(widths.assigned)}>
-        <select
-          value={assigneeId}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            setAssigneeId(next);
-            void persist({ assigneeId: next });
-          }}
-          className={`${selectField} text-xs`}
-          aria-label="Assigned"
-        >
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {personLabel(user.name, user.role)}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td className="border-b border-slate-100 px-2 py-1 align-top" style={dataBox(widths.start)}>
-        {summary ? (
-          <span
-            className="block px-1 py-0.5 text-xs whitespace-nowrap text-slate-700"
-            title="Start comes from the earliest task under this heading"
-          >
-            {formatDate(startDate)}
-          </span>
-        ) : (
-          <input
-            type="date"
-            value={startDate}
-            onChange={(event) => void persist({ startDate: event.target.value })}
-            className={`${dateField} text-xs`}
-            aria-label="Start date"
-          />
-        )}
-      </td>
-      <td className="border-b border-slate-100 px-2 py-1 align-top" style={dataBox(widths.end)}>
-        {summary ? (
-          <span
-            className="block px-1 py-0.5 text-xs whitespace-nowrap text-slate-700"
-            title="End comes from the latest task under this heading"
-          >
-            {formatDate(endDate)}
-          </span>
-        ) : (
-          <input
-            type="date"
-            value={endDate}
-            onChange={(event) => void persist({ endDate: event.target.value })}
-            className={`${dateField} text-xs`}
-            aria-label="End date"
-          />
-        )}
-      </td>
-      <td className="border-b border-slate-100 px-2 py-1 align-top" style={dataBox(widths.pct)}>
-        {summary ? (
-          <span
-            className="block px-1 py-0.5 text-xs text-slate-700"
-            title="Percent comes from the tasks under this heading"
-          >
-            {percent}
-          </span>
-        ) : (
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={percent}
-            onChange={(event) => setPercent(event.target.value)}
-            onBlur={() => {
-              const value = Math.min(100, Math.max(0, Number(percent) || 0));
-              setPercent(String(value));
-              if (value !== task.percent_complete) void persist({ percentComplete: value });
-            }}
-            className={`${numberField} text-xs`}
-            aria-label="Percent complete"
-          />
-        )}
-      </td>
-      <td className="border-b border-slate-100 px-2 py-1 align-top" style={dataBox(widths.status)}>
-        {summary ? (
-          <span
-            className="block px-1 py-0.5 text-xs text-slate-700"
-            title="Status comes from the tasks under this heading"
-          >
-            {taskStatusLabel[status]}
-          </span>
-        ) : (
+      </div>
+      <div className="flex" style={{ minWidth: rightMinWidth }}>
+        <div className="border-r border-slate-100 px-2 py-1.5" style={dataBox(widths.assigned)}>
           <select
-            value={status}
+            value={assigneeId}
             onChange={(event) => {
-              const next = event.target.value as TaskStatus;
-              setStatus(next);
-              void persist({ status: next });
+              const next = Number(event.target.value);
+              setAssigneeId(next);
+              void persist({ assigneeId: next });
             }}
+            onFocus={onSelect}
             className={`${selectField} text-xs`}
-            aria-label="Status"
+            aria-label="Assigned"
           >
-            {TASK_STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {taskStatusLabel[value]}
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {personLabel(user.name, user.role)}
               </option>
             ))}
           </select>
-        )}
-      </td>
-      <td
-        className="relative border-b border-l border-slate-100 p-0 align-top"
-        style={{ minWidth: ganttMin }}
-      >
-        <EditableBar
-          range={range}
-          startDate={startDate}
-          endDate={endDate}
-          className={taskBarClass[status]}
-          percentComplete={Number(percent) || 0}
-          isMilestone={!summary && status === "milestone"}
-          locked={summary}
-          onCommit={(nextStart, nextEnd) => {
-            void persist({ startDate: nextStart, endDate: nextEnd });
-          }}
-        />
-      </td>
-    </tr>
+        </div>
+        <div className="border-r border-slate-100 px-2 py-1.5" style={dataBox(widths.start)}>
+          {summary ? (
+            <span
+              className="block px-1 py-0.5 text-xs whitespace-nowrap text-slate-700"
+              title="Start comes from the earliest task under this heading"
+            >
+              {formatDate(startDate)}
+            </span>
+          ) : (
+            <input
+              type="date"
+              value={startDate}
+              onChange={(event) => void persist({ startDate: event.target.value })}
+              onFocus={onSelect}
+              className={`${dateField} text-xs`}
+              aria-label="Start date"
+            />
+          )}
+        </div>
+        <div className="border-r border-slate-100 px-2 py-1.5" style={dataBox(widths.end)}>
+          {summary ? (
+            <span
+              className="block px-1 py-0.5 text-xs whitespace-nowrap text-slate-700"
+              title="End comes from the latest task under this heading"
+            >
+              {formatDate(endDate)}
+            </span>
+          ) : (
+            <input
+              type="date"
+              value={endDate}
+              onChange={(event) => void persist({ endDate: event.target.value })}
+              onFocus={onSelect}
+              className={`${dateField} text-xs`}
+              aria-label="End date"
+            />
+          )}
+        </div>
+        <div className="border-r border-slate-100 px-2 py-1.5" style={dataBox(widths.pct)}>
+          {summary ? (
+            <span
+              className="block px-1 py-0.5 text-xs text-slate-700"
+              title="Percent comes from the tasks under this heading"
+            >
+              {percent}
+            </span>
+          ) : (
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={percent}
+              onChange={(event) => setPercent(event.target.value)}
+              onFocus={onSelect}
+              onBlur={() => {
+                const value = Math.min(100, Math.max(0, Number(percent) || 0));
+                setPercent(String(value));
+                if (value !== task.percent_complete) void persist({ percentComplete: value });
+              }}
+              className={`${numberField} text-xs`}
+              aria-label="Percent complete"
+            />
+          )}
+        </div>
+        <div className="border-r border-slate-100 px-2 py-1.5" style={dataBox(widths.status)}>
+          {summary ? (
+            <span
+              className="block px-1 py-0.5 text-xs text-slate-700"
+              title="Status comes from the tasks under this heading"
+            >
+              {taskStatusLabel[status]}
+            </span>
+          ) : (
+            <select
+              value={status}
+              onChange={(event) => {
+                const next = event.target.value as TaskStatus;
+                setStatus(next);
+                void persist({ status: next });
+              }}
+              onFocus={onSelect}
+              className={`${selectField} text-xs`}
+              aria-label="Status"
+            >
+              {TASK_STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {taskStatusLabel[value]}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div
+          className="relative border-l border-slate-100 p-0"
+          style={{ width: ganttMin, minWidth: ganttMin }}
+        >
+          <EditableBar
+            range={range}
+            startDate={startDate}
+            endDate={endDate}
+            className={taskBarClass[status]}
+            percentComplete={Number(percent) || 0}
+            isMilestone={!summary && status === "milestone"}
+            locked={summary}
+            onCommit={(nextStart, nextEnd) => {
+              void persist({ startDate: nextStart, endDate: nextEnd });
+            }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
